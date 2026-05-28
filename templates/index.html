@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Screener Pro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; }
+
+  .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+  .topbar h1 { font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--accent); }
+  .topbar .tagline { font-size: 0.8rem; color: var(--text-muted); }
+
+  .main { max-width: 1600px; margin: 0 auto; padding: 20px; }
+
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .card-title { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+
+  .score-bar-wrap { background: var(--bg3); border-radius: 4px; height: 6px; overflow: hidden; }
+  .score-bar { height: 6px; border-radius: 4px; transition: width 0.5s; }
+
+  .badge-rec { font-size: 0.72rem; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .rec-strong-buy  { background: #1a4731; color: #3fb950; border: 1px solid #3fb950; }
+  .rec-buy         { background: #1b3a6b; color: #58a6ff; border: 1px solid #58a6ff; }
+  .rec-hold        { background: #3d2f00; color: #d29922; border: 1px solid #d29922; }
+  .rec-sell        { background: #4a1a1a; color: #f85149; border: 1px solid #f85149; }
+  .rec-strong-sell { background: #2d0f0f; color: #ff6b6b; border: 1px solid #ff6b6b; }
+  .rec-na          { background: var(--bg3); color: var(--text-muted); border: 1px solid var(--border); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead th { background: var(--bg3); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+  thead th:hover { color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
+  tbody tr:hover { background: var(--bg3); }
+  tbody td { padding: 10px 12px; vertical-align: middle; }
+
+  .ticker-sym { font-weight: 700; color: var(--accent); font-size: 0.9rem; }
+  .ticker-name { font-size: 0.75rem; color: var(--text-muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .score-num { font-weight: 700; font-size: 0.95rem; }
+  .score-high { color: var(--green); }
+  .score-med { color: var(--yellow); }
+  .score-low { color: var(--red); }
+
+  .top-pick-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.2s; }
+  .top-pick-card:hover { border-color: var(--accent); }
+  .top-pick-sym { font-weight: 700; font-size: 1rem; color: var(--text); }
+  .top-pick-name { font-size: 0.72rem; color: var(--text-muted); }
+  .top-pick-score { font-size: 1.4rem; font-weight: 800; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .filters select, .filters input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; outline: none; }
+  .filters select:focus, .filters input:focus { border-color: var(--accent); }
+  .btn-screen { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 8px 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: opacity 0.2s; }
+  .btn-screen:hover { opacity: 0.85; }
+  .btn-screen:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .stat-box { background: var(--bg3); border-radius: 8px; padding: 12px; text-align: center; }
+  .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+  .stat-val { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; overflow-y: auto; }
+  .modal-overlay.active { display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; }
+  .modal-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 860px; padding: 28px; position: relative; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; }
+  .modal-close:hover { color: var(--text); }
+  .signal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .signal-section { background: var(--bg3); border-radius: 8px; padding: 16px; }
+  .signal-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+  .signal-row:last-child { border-bottom: none; }
+  .signal-key { color: var(--text-muted); }
+  .signal-val { font-weight: 600; text-align: right; }
+
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .results-count { font-size: 0.8rem; color: var(--text-muted); }
+
+  .sort-icon { display: inline-block; font-size: 0.65rem; margin-left: 3px; opacity: 0.5; }
+  .sort-icon.asc::after { content: ' ↑'; }
+  .sort-icon.desc::after { content: ' ↓'; }
+
+  .progress-wrap { margin-bottom: 12px; }
+  .progress-bar-outer { background: var(--bg3); border-radius: 4px; height: 8px; overflow: hidden; }
+  .progress-bar-inner { height: 8px; border-radius: 4px; background: var(--accent); width: 0%; transition: width 0.3s; }
+
+  @media (max-width: 768px) {
+    .signal-grid { grid-template-columns: 1fr; }
+    .topbar h1 { font-size: 1rem; }
+    tbody td:nth-child(n+6) { display: none; }
+  }
+
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tab-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 5px 14px; font-size: 0.82rem; cursor: pointer; }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-graph-up-arrow" style="font-size:1.3rem;color:var(--accent)"></i>
+      <h1>Stock Screener Pro</h1>
+    </div>
+    <div class="tagline">Real-time technical &amp; fundamental analysis</div>
+  </div>
+  <div class="ms-auto d-flex gap-2 align-items-center" style="font-size:0.8rem;color:var(--text-muted)">
+    <i class="bi bi-clock"></i>
+    <span id="last-updated">Not yet run</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-title"><i class="bi bi-sliders"></i> Screener Settings</div>
+    <div class="filters">
+      <label class="d-flex align-items-center gap-2" style="cursor:pointer">
+        <input type="checkbox" id="use-sp500" checked style="accent-color:var(--accent);width:16px;height:16px">
+        <span style="font-size:0.85rem">Include S&amp;P 500 Top</span>
+        <select id="sp500-limit" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:0.82rem">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="75">75</option>
+          <option value="100">100</option>
+        </select>
+        <span style="font-size:0.85rem">stocks</span>
+      </label>
+      <div style="height:24px;width:1px;background:var(--border)"></div>
+      <div style="position:relative">
+        <input type="text" id="custom-tickers" placeholder="Add tickers: AAPL, TSLA, NVDA..." style="width:280px">
+      </div>
+      <div style="height:24px;width:1px;background:var(--border)"></div>
+      <select id="sector-filter">
+        <option value="All">All Sectors</option>
+      </select>
+      <select id="rec-filter">
+        <option value="All">All Recommendations</option>
+        <option value="Strong Buy">Strong Buy</option>
+        <option value="Buy">Buy</option>
+        <option value="Hold">Hold</option>
+        <option value="Sell">Sell</option>
+        <option value="Strong Sell">Strong Sell</option>
+      </select>
+      <button class="btn-screen" id="run-btn" onclick="runScreener()">
+        <i class="bi bi-play-fill"></i> Run Screener
+      </button>
+    </div>
+    <div id="progress-wrap" class="mt-3" style="display:none">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px" id="progress-text">Fetching market data...</div>
+      <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar"></div></div>
+    </div>
+  </div>
+
+  <!-- Top Picks row -->
+  <div id="top-picks" style="display:none">
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card mb-0">
+          <div class="card-title"><i class="bi bi-arrow-up-circle-fill" style="color:var(--green)"></i> Top Long-Term Buys</div>
+          <div id="top-buys-grid" class="row g-2"></div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card mb-0">
+          <div class="card-title"><i class="bi bi-arrow-down-circle-fill" style="color:var(--red)"></i> Top Short-Term Sells / Shorts</div>
+          <div id="top-sells-grid" class="row g-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results table -->
+  <div class="card" id="results-card" style="display:none">
+    <div class="section-header">
+      <div>
+        <div class="card-title mb-1"><i class="bi bi-table"></i> Screening Results</div>
+        <div class="results-count" id="results-count"></div>
+      </div>
+      <div class="d-flex gap-2">
+        <input type="text" id="search-box" placeholder="Search ticker / name..." oninput="filterTable()"
+          style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;font-size:0.82rem;outline:none">
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="setView('all',this)">All</button>
+      <button class="tab-btn" onclick="setView('buy',this)">Buys</button>
+      <button class="tab-btn" onclick="setView('sell',this)">Sells</button>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable('ticker')">Ticker <span class="sort-icon" id="sort-ticker"></span></th>
+            <th onclick="sortTable('price')">Price <span class="sort-icon" id="sort-price"></span></th>
+            <th onclick="sortTable('composite_score')">Overall Score <span class="sort-icon" id="sort-composite_score" class="desc"></span></th>
+            <th onclick="sortTable('tech_score')">Short-Term <span class="sort-icon" id="sort-tech_score"></span></th>
+            <th onclick="sortTable('fund_score')">Long-Term <span class="sort-icon" id="sort-fund_score"></span></th>
+            <th>Overall Rec</th>
+            <th>Short Rec</th>
+            <th>Long Rec</th>
+            <th onclick="sortTable('rsi')">RSI <span class="sort-icon" id="sort-rsi"></span></th>
+            <th onclick="sortTable('momentum_20d')">20D Mom% <span class="sort-icon" id="sort-momentum_20d"></span></th>
+            <th>P/E</th>
+            <th>Rev Growth</th>
+            <th>Analyst</th>
+            <th>Upside</th>
+            <th>Market Cap</th>
+            <th>Sector</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state" class="text-center py-5" style="color:var(--text-muted)">
+    <i class="bi bi-graph-up" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:12px"></i>
+    <div style="font-size:1rem;margin-bottom:6px">Configure your screener and click Run</div>
+    <div style="font-size:0.82rem">Analyzes technical indicators + fundamentals to rank stocks</div>
+  </div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-box" id="modal-box">
+    <button class="modal-close" onclick="closeModalBtn()"><i class="bi bi-x-lg"></i></button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+let allData = [];
+let currentSort = { key: 'composite_score', dir: 'desc' };
+let currentView = 'all';
+
+async function runScreener() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Scanning...';
+
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  progressWrap.style.display = 'block';
+
+  // Animated progress (fake, since we can't track backend progress)
+  let prog = 0;
+  const progInterval = setInterval(() => {
+    prog = Math.min(prog + Math.random() * 4, 90);
+    progressBar.style.width = prog + '%';
+    if (prog < 30) progressText.textContent = 'Connecting to market data...';
+    else if (prog < 60) progressText.textContent = 'Downloading stock data...';
+    else progressText.textContent = 'Calculating scores...';
+  }, 400);
+
+  const usesp500 = document.getElementById('use-sp500').checked;
+  const limit = parseInt(document.getElementById('sp500-limit').value);
+  const customRaw = document.getElementById('custom-tickers').value;
+  const customTickers = customRaw.split(/[\s,]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
+  const sector = document.getElementById('sector-filter').value;
+
+  try {
+    const resp = await fetch('/api/screen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ use_sp500: usesp500, custom_tickers: customTickers, limit, sector })
+    });
+    const data = await resp.json();
+
+    clearInterval(progInterval);
+    progressBar.style.width = '100%';
+    setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 500);
+
+    allData = data.results;
+    renderTopPicks(data.top_buys, data.top_sells);
+    populateSectors(data.sectors);
+    renderTable(allData);
+
+    document.getElementById('results-count').textContent =
+      `${data.results.length} stocks screened from ${data.screened} tickers`;
+    document.getElementById('last-updated').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString();
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('results-card').style.display = 'block';
+    document.getElementById('top-picks').style.display = 'block';
+  } catch (e) {
+    clearInterval(progInterval);
+    progressWrap.style.display = 'none';
+    alert('Error fetching data: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+}
+
+function populateSectors(sectors) {
+  const sel = document.getElementById('sector-filter');
+  const current = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  sectors.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    if (s === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function recClass(rec) {
+  if (!rec) return 'rec-na';
+  const r = rec.toLowerCase().replace(' ', '-');
+  return 'rec-' + r;
+}
+
+function scoreClass(s) {
+  if (s >= 65) return 'score-high';
+  if (s >= 45) return 'score-med';
+  return 'score-low';
+}
+
+function scoreBarColor(s) {
+  if (s >= 65) return '#3fb950';
+  if (s >= 45) return '#d29922';
+  return '#f85149';
+}
+
+function renderTopPicks(buys, sells) {
+  const buyGrid = document.getElementById('top-buys-grid');
+  const sellGrid = document.getElementById('top-sells-grid');
+  buyGrid.innerHTML = '';
+  sellGrid.innerHTML = '';
+
+  buys.forEach(s => {
+    buyGrid.innerHTML += `
+      <div class="col-6 col-lg-4" onclick="openDetail('${s.ticker}')">
+        <div class="top-pick-card">
+          <div class="top-pick-score score-high">${s.composite_score}</div>
+          <div>
+            <div class="top-pick-sym">${s.ticker}</div>
+            <div class="top-pick-name">${s.name}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted)">$${s.price}</div>
+          </div>
+          <div class="ms-auto"><span class="badge-rec ${recClass(s.overall_rec)}">${s.overall_rec}</span></div>
+        </div>
+      </div>`;
+  });
+
+  sells.forEach(s => {
+    sellGrid.innerHTML += `
+      <div class="col-6 col-lg-4" onclick="openDetail('${s.ticker}')">
+        <div class="top-pick-card">
+          <div class="top-pick-score score-low">${s.composite_score}</div>
+          <div>
+            <div class="top-pick-sym">${s.ticker}</div>
+            <div class="top-pick-name">${s.name}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted)">$${s.price}</div>
+          </div>
+          <div class="ms-auto"><span class="badge-rec ${recClass(s.overall_rec)}">${s.overall_rec}</span></div>
+        </div>
+      </div>`;
+  });
+}
+
+function renderTable(data) {
+  const sector = document.getElementById('sector-filter').value;
+  const recF = document.getElementById('rec-filter').value;
+  const search = (document.getElementById('search-box').value || '').toLowerCase();
+
+  let filtered = data.filter(r => {
+    if (sector !== 'All' && r.sector !== sector) return false;
+    if (recF !== 'All' && r.overall_rec !== recF) return false;
+    if (currentView === 'buy' && !['Strong Buy','Buy'].includes(r.overall_rec)) return false;
+    if (currentView === 'sell' && !['Strong Sell','Sell'].includes(r.overall_rec)) return false;
+    if (search && !r.ticker.toLowerCase().includes(search) && !r.name.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  // Sort
+  filtered.sort((a, b) => {
+    let av = a[currentSort.key], bv = b[currentSort.key];
+    if (av === 'N/A' || av === null || av === undefined) av = currentSort.dir === 'asc' ? Infinity : -Infinity;
+    if (bv === 'N/A' || bv === null || bv === undefined) bv = currentSort.dir === 'asc' ? Infinity : -Infinity;
+    if (typeof av === 'string') av = av.replace(/[%$]/g, '');
+    if (typeof bv === 'string') bv = bv.replace(/[%$]/g, '');
+    av = parseFloat(av); bv = parseFloat(bv);
+    if (isNaN(av)) av = currentSort.dir === 'asc' ? Infinity : -Infinity;
+    if (isNaN(bv)) bv = currentSort.dir === 'asc' ? Infinity : -Infinity;
+    return currentSort.dir === 'asc' ? av - bv : bv - av;
+  });
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  filtered.forEach(r => {
+    const row = document.createElement('tr');
+    row.onclick = () => openDetail(r.ticker);
+    row.innerHTML = `
+      <td>
+        <div class="ticker-sym">${r.ticker}</div>
+        <div class="ticker-name">${r.name}</div>
+      </td>
+      <td>$${r.price !== 'N/A' ? r.price : '—'}</td>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <span class="score-num ${scoreClass(r.composite_score)}">${r.composite_score}</span>
+          <div style="width:60px">
+            <div class="score-bar-wrap">
+              <div class="score-bar" style="width:${r.composite_score}%;background:${scoreBarColor(r.composite_score)}"></div>
+            </div>
+          </div>
+        </div>
+      </td>
+      <td><span class="score-num ${scoreClass(r.tech_score)}">${r.tech_score}</span></td>
+      <td><span class="score-num ${scoreClass(r.fund_score)}">${r.fund_score}</span></td>
+      <td><span class="badge-rec ${recClass(r.overall_rec)}">${r.overall_rec || '—'}</span></td>
+      <td><span class="badge-rec ${recClass(r.short_rec)}">${r.short_rec || '—'}</span></td>
+      <td><span class="badge-rec ${recClass(r.long_rec)}">${r.long_rec || '—'}</span></td>
+      <td style="color:${r.rsi < 30 ? 'var(--green)' : r.rsi > 70 ? 'var(--red)' : 'inherit'}">${r.rsi !== 'N/A' ? r.rsi : '—'}</td>
+      <td style="color:${r.momentum_20d > 0 ? 'var(--green)' : r.momentum_20d < 0 ? 'var(--red)' : 'inherit'}">${r.momentum_20d !== 'N/A' ? r.momentum_20d + '%' : '—'}</td>
+      <td>${r.pe_ratio !== 'N/A' ? r.pe_ratio : '—'}</td>
+      <td style="color:${r.revenue_growth && r.revenue_growth.startsWith('-') ? 'var(--red)' : 'var(--green)'}">${r.revenue_growth !== 'N/A' ? r.revenue_growth : '—'}</td>
+      <td>${r.analyst_rec !== 'N/A' ? r.analyst_rec : '—'}</td>
+      <td style="color:${r.analyst_upside && !r.analyst_upside.startsWith('-') ? 'var(--green)' : 'var(--red)'}">${r.analyst_upside !== 'N/A' ? r.analyst_upside : '—'}</td>
+      <td>${r.market_cap_fmt || '—'}</td>
+      <td style="color:var(--text-muted);font-size:0.78rem">${r.sector !== 'N/A' ? r.sector : '—'}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  document.getElementById('results-count').textContent =
+    `Showing ${filtered.length} of ${data.length} stocks`;
+}
+
+function filterTable() { renderTable(allData); }
+function setView(v, btn) {
+  currentView = v;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable(allData);
+}
+
+function sortTable(key) {
+  if (currentSort.key === key) {
+    currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort.key = key;
+    currentSort.dir = 'desc';
+  }
+  // Update indicators
+  document.querySelectorAll('.sort-icon').forEach(el => { el.className = 'sort-icon'; });
+  const icon = document.getElementById('sort-' + key);
+  if (icon) icon.className = 'sort-icon ' + currentSort.dir;
+  renderTable(allData);
+}
+
+async function openDetail(ticker) {
+  const modal = document.getElementById('modal');
+  const content = document.getElementById('modal-content');
+  modal.classList.add('active');
+  content.innerHTML = '<div class="text-center py-4"><span class="spinner" style="width:32px;height:32px;border-width:3px"></span></div>';
+
+  try {
+    const resp = await fetch('/api/detail/' + ticker);
+    const r = await resp.json();
+    const ts = r.tech_signals || {};
+    const fs = r.fund_signals || {};
+
+    content.innerHTML = `
+      <div class="d-flex align-items-start gap-3 mb-4 flex-wrap">
+        <div>
+          <h2 style="margin:0;font-size:1.6rem;font-weight:800">${r.ticker}</h2>
+          <div style="color:var(--text-muted);font-size:0.88rem">${r.name}</div>
+          <div style="color:var(--text-muted);font-size:0.78rem">${r.sector} · ${r.market_cap_fmt}</div>
+        </div>
+        <div class="ms-auto text-end">
+          <div style="font-size:2rem;font-weight:800;color:var(--accent)">$${r.price}</div>
+          <span class="badge-rec ${recClass(r.overall_rec)}">${r.overall_rec}</span>
+        </div>
+      </div>
+
+      <div class="stat-grid mb-4">
+        <div class="stat-box">
+          <div class="stat-label">Overall</div>
+          <div class="stat-val ${scoreClass(r.composite_score)}">${r.composite_score}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Short-Term</div>
+          <div class="stat-val ${scoreClass(r.tech_score)}">${r.tech_score}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Long-Term</div>
+          <div class="stat-val ${scoreClass(r.fund_score)}">${r.fund_score}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Short Rec</div>
+          <div class="mt-1"><span class="badge-rec ${recClass(r.short_rec)}">${r.short_rec}</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Long Rec</div>
+          <div class="mt-1"><span class="badge-rec ${recClass(r.long_rec)}">${r.long_rec}</span></div>
+        </div>
+      </div>
+
+      <div class="signal-grid">
+        <div class="signal-section">
+          <div class="card-title mb-3"><i class="bi bi-activity"></i> Technical Signals (Short-Term)</div>
+          ${sigRow('RSI (14)', ts.rsi, ts.rsi < 30 ? 'var(--green)' : ts.rsi > 70 ? 'var(--red)' : '')}
+          ${sigRow('RSI Signal', ts.rsi_signal)}
+          ${sigRow('MACD Signal', ts.macd_signal)}
+          ${sigRow('MA Signal', ts.ma_signal)}
+          ${sigRow('Price', '$' + ts.price)}
+          ${sigRow('MA 20', '$' + ts.ma20)}
+          ${sigRow('MA 50', '$' + ts.ma50)}
+          ${sigRow('20D Momentum', ts.momentum_20d + '%', ts.momentum_20d > 0 ? 'var(--green)' : 'var(--red)')}
+          ${sigRow('52W High', '$' + ts.high_52w)}
+          ${sigRow('52W Low', '$' + ts.low_52w)}
+          ${sigRow('52W Position', ts.pos_52w + '%')}
+          ${sigRow('Volume Ratio', ts.volume_ratio + 'x')}
+          ${sigRow('Volume Signal', ts.volume_signal)}
+        </div>
+        <div class="signal-section">
+          <div class="card-title mb-3"><i class="bi bi-building"></i> Fundamental Signals (Long-Term)</div>
+          ${sigRow('P/E Ratio', fs.pe_ratio)}
+          ${sigRow('P/E Signal', fs.pe_signal)}
+          ${sigRow('Forward P/E', fs.forward_pe)}
+          ${sigRow('Fwd P/E Signal', fs.fwd_pe_signal)}
+          ${sigRow('Revenue Growth', fs.revenue_growth, fs.revenue_growth && !fs.revenue_growth.startsWith('-') ? 'var(--green)' : 'var(--red)')}
+          ${sigRow('EPS Growth', fs.eps_growth, fs.eps_growth && !fs.eps_growth.startsWith('-') ? 'var(--green)' : 'var(--red)')}
+          ${sigRow('Profit Margin', fs.profit_margin)}
+          ${sigRow('Return on Equity', fs.roe)}
+          ${sigRow('Debt / Equity', fs.debt_to_equity)}
+          ${sigRow('Analyst Target', fs.analyst_target ? '$' + fs.analyst_target : null)}
+          ${sigRow('Analyst Upside', fs.analyst_upside, fs.analyst_upside && !fs.analyst_upside.startsWith('-') ? 'var(--green)' : 'var(--red)')}
+          ${sigRow('Analyst Rating', fs.analyst_rec)}
+        </div>
+      </div>
+
+      <div style="margin-top:16px;font-size:0.75rem;color:var(--text-muted);text-align:center">
+        Data from Yahoo Finance via yfinance. Not financial advice. Scores: 40% technical + 60% fundamental.
+      </div>
+    `;
+  } catch (e) {
+    content.innerHTML = '<div class="text-center py-4" style="color:var(--red)">Failed to load detail.</div>';
+  }
+}
+
+function sigRow(label, val, color) {
+  if (val === null || val === undefined || val === 'undefined' || val === 'N/A' || val === 'undefined%') return '';
+  return `<div class="signal-row">
+    <span class="signal-key">${label}</span>
+    <span class="signal-val" style="${color ? 'color:' + color : ''}">${val}</span>
+  </div>`;
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal')) closeModalBtn();
+}
+function closeModalBtn() {
+  document.getElementById('modal').classList.remove('active');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalBtn(); });
+</script>
+</body>
+</html>
