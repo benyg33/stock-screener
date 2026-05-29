@@ -2,6 +2,20 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timezone
+import time
+import requests
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Use a browser-like session to avoid Yahoo Finance blocking
+_session = requests.Session()
+_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+})
 
 SP500_TICKERS = [
     "AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","AVGO","JPM",
@@ -272,26 +286,64 @@ def get_recommendation(score):
     elif score >= 38: return "Sell", "danger"
     else: return "Strong Sell", "dark"
 
+def _fetch_with_retry(fn, retries=3, delay=2):
+    for i in range(retries):
+        try:
+            result = fn()
+            if result is not None:
+                return result
+        except Exception as e:
+            logger.warning(f"Fetch attempt {i+1} failed: {e}")
+            if i < retries - 1:
+                time.sleep(delay)
+    return None
+
 def screen_tickers(tickers, period="6mo"):
     results = []
-    try:
-        raw = yf.download(tickers, period=period, progress=False,
-                          group_by="ticker", threads=True, auto_adjust=True)
-    except Exception:
-        raw = None
+
+    # Try batch download first
+    raw = None
+    if len(tickers) > 1:
+        try:
+            raw = yf.download(
+                tickers, period=period, progress=False,
+                group_by="ticker", threads=False, auto_adjust=True,
+                session=_session
+            )
+            if raw is None or raw.empty:
+                raw = None
+                logger.warning("Batch download returned empty data")
+        except Exception as e:
+            logger.warning(f"Batch download failed: {e}")
+            raw = None
 
     for ticker in tickers:
         try:
-            stock = yf.Ticker(ticker)
-            info = stock.info or {}
+            stock = yf.Ticker(ticker, session=_session)
 
+            # Get info with retry
+            info = _fetch_with_retry(lambda s=stock: s.info) or {}
+            if not info or len(info) < 5:
+                logger.warning(f"{ticker}: info empty, retrying...")
+                time.sleep(1)
+                stock2 = yf.Ticker(ticker)
+                info = stock2.info or {}
+
+            # Get history
+            hist = None
             if raw is not None and len(tickers) > 1:
                 try:
-                    hist = raw[ticker].dropna() if ticker in raw.columns.get_level_values(0) else stock.history(period=period)
+                    if ticker in raw.columns.get_level_values(0):
+                        hist = raw[ticker].dropna()
+                        if hist.empty:
+                            hist = None
                 except Exception:
-                    hist = stock.history(period=period)
-            else:
-                hist = stock.history(period=period)
+                    hist = None
+
+            if hist is None or (hasattr(hist, '__len__') and len(hist) < 10):
+                hist = _fetch_with_retry(lambda s=stock: s.history(period=period, auto_adjust=True))
+
+            logger.info(f"{ticker}: info keys={len(info)}, hist rows={len(hist) if hist is not None else 0}")
 
             tech_score, tech_signals = score_technical(hist)
             fund_score, fund_signals = score_fundamental(info)
