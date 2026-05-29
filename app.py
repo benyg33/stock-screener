@@ -24,15 +24,15 @@ def api_screen():
 
     results = screen_tickers(tickers)
 
-    if sector_filter and sector_filter != "All":
-        results = [r for r in results if r.get("sector") == sector_filter]
-
     for r in results:
         r["market_cap_fmt"] = format_market_cap(r.get("market_cap"))
 
+    # Compute sectors from ALL results before any filtering
+    sectors = sorted(set(r["sector"] for r in results if r.get("sector") not in ("N/A", None, "")))
+
+    # Filter for buys/sells/count from all results
     buys = [r for r in results if r["overall_rec"] in ("Strong Buy", "Buy")][:5]
     sells = [r for r in results if r["overall_rec"] in ("Strong Sell", "Sell")][:5]
-    sectors = sorted(set(r["sector"] for r in results if r["sector"] != "N/A"))
 
     return jsonify({
         "results": results,

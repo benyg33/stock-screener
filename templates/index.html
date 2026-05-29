@@ -426,13 +426,11 @@ async function runScreener() {
   const limit = parseInt(document.getElementById('sp500-limit').value);
   const customRaw = document.getElementById('custom-tickers').value;
   const customTickers = customRaw.split(/[\s,]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
-  const sector = document.getElementById('sector-filter').value;
-
   try {
     const resp = await fetch('/api/screen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ use_sp500: usesp500, custom_tickers: customTickers, limit, sector })
+      body: JSON.stringify({ use_sp500: usesp500, custom_tickers: customTickers, limit })
     });
     const data = await resp.json();
     clearInterval(progInterval);
@@ -463,13 +461,18 @@ async function runScreener() {
 function populateSectors(sectors) {
   const sel = document.getElementById('sector-filter');
   const current = sel.value;
-  while (sel.options.length > 1) sel.remove(1);
+  // Merge new sectors with existing options (don't wipe hardcoded ones)
+  const existing = new Set(Array.from(sel.options).map(o => o.value));
   sectors.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s; opt.textContent = s;
-    if (s === current) opt.selected = true;
-    sel.appendChild(opt);
+    if (!existing.has(s)) {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sel.appendChild(opt);
+      existing.add(s);
+    }
   });
+  // Restore selected value
+  sel.value = current;
 }
 
 function recClass(rec) {
