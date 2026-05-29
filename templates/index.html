@@ -6,35 +6,23 @@
 <title>Stock Screener Pro</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #0d1117;
-    --bg2: #161b22;
-    --bg3: #21262d;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-muted: #8b949e;
-    --accent: #58a6ff;
-    --green: #3fb950;
-    --red: #f85149;
-    --yellow: #d29922;
-    --purple: #bc8cff;
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --border: #30363d;
+    --text: #e6edf3; --text-muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
   }
   * { box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; }
-
   .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
   .topbar h1 { font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--accent); }
   .topbar .tagline { font-size: 0.8rem; color: var(--text-muted); }
-
   .main { max-width: 1600px; margin: 0 auto; padding: 20px; }
-
   .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
   .card-title { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
-
   .score-bar-wrap { background: var(--bg3); border-radius: 4px; height: 6px; overflow: hidden; }
   .score-bar { height: 6px; border-radius: 4px; transition: width 0.5s; }
-
   .badge-rec { font-size: 0.72rem; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
   .rec-strong-buy  { background: #1a4731; color: #3fb950; border: 1px solid #3fb950; }
   .rec-buy         { background: #1b3a6b; color: #58a6ff; border: 1px solid #58a6ff; }
@@ -42,47 +30,38 @@
   .rec-sell        { background: #4a1a1a; color: #f85149; border: 1px solid #f85149; }
   .rec-strong-sell { background: #2d0f0f; color: #ff6b6b; border: 1px solid #ff6b6b; }
   .rec-na          { background: var(--bg3); color: var(--text-muted); border: 1px solid var(--border); }
-
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   thead th { background: var(--bg3); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
   thead th:hover { color: var(--accent); }
   tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
   tbody tr:hover { background: var(--bg3); }
   tbody td { padding: 10px 12px; vertical-align: middle; }
-
   .ticker-sym { font-weight: 700; color: var(--accent); font-size: 0.9rem; }
   .ticker-name { font-size: 0.75rem; color: var(--text-muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
   .score-num { font-weight: 700; font-size: 0.95rem; }
   .score-high { color: var(--green); }
   .score-med { color: var(--yellow); }
   .score-low { color: var(--red); }
-
   .top-pick-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.2s; }
   .top-pick-card:hover { border-color: var(--accent); }
   .top-pick-sym { font-weight: 700; font-size: 1rem; color: var(--text); }
   .top-pick-name { font-size: 0.72rem; color: var(--text-muted); }
   .top-pick-score { font-size: 1.4rem; font-weight: 800; }
-
   .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .filters select, .filters input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; outline: none; }
   .filters select:focus, .filters input:focus { border-color: var(--accent); }
   .btn-screen { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 8px 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: opacity 0.2s; }
   .btn-screen:hover { opacity: 0.85; }
   .btn-screen:disabled { opacity: 0.5; cursor: not-allowed; }
-
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
   .stat-box { background: var(--bg3); border-radius: 8px; padding: 12px; text-align: center; }
   .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
   .stat-val { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
-
-  /* Modal */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; overflow-y: auto; }
-  .modal-overlay.active { display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; }
-  .modal-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 860px; padding: 28px; position: relative; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; overflow-y: auto; }
+  .modal-overlay.active { display: flex; align-items: flex-start; justify-content: center; padding: 30px 20px; }
+  .modal-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 920px; padding: 28px; position: relative; }
   .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; }
   .modal-close:hover { color: var(--text); }
   .signal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -91,27 +70,46 @@
   .signal-row:last-child { border-bottom: none; }
   .signal-key { color: var(--text-muted); }
   .signal-val { font-weight: 600; text-align: right; }
-
   .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
   .results-count { font-size: 0.8rem; color: var(--text-muted); }
-
   .sort-icon { display: inline-block; font-size: 0.65rem; margin-left: 3px; opacity: 0.5; }
   .sort-icon.asc::after { content: ' ↑'; }
   .sort-icon.desc::after { content: ' ↓'; }
-
-  .progress-wrap { margin-bottom: 12px; }
   .progress-bar-outer { background: var(--bg3); border-radius: 4px; height: 8px; overflow: hidden; }
   .progress-bar-inner { height: 8px; border-radius: 4px; background: var(--accent); width: 0%; transition: width 0.3s; }
-
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 5px 14px; font-size: 0.82rem; cursor: pointer; }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+  .modal-tab-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+  .modal-tab { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 6px 16px; font-size: 0.82rem; cursor: pointer; }
+  .modal-tab.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+  .modal-panel { display: none; }
+  .modal-panel.active { display: block; }
+  /* Watchlist */
+  .star-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1rem; padding: 2px 6px; transition: color 0.2s; }
+  .star-btn.active { color: #d29922; }
+  .star-btn:hover { color: #d29922; }
+  /* News */
+  .news-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .news-item:last-child { border-bottom: none; }
+  .news-title { font-size: 0.88rem; font-weight: 600; color: var(--text); text-decoration: none; line-height: 1.4; }
+  .news-title:hover { color: var(--accent); }
+  .news-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+  /* Alert */
+  .alert-banner { background: #1a4731; border: 1px solid var(--green); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .alert-banner.sell { background: #4a1a1a; border-color: var(--red); }
+  .alert-input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; width: 80px; outline: none; }
+  .alert-input:focus { border-color: var(--accent); }
+  .btn-sm-accent { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 5px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+  .btn-sm-danger { background: var(--red); color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+  .period-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 5px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; }
+  .period-btn.active { background: var(--bg3); color: var(--text); border-color: var(--accent); }
+  .earnings-badge { background: #3d2200; color: #ff9900; border: 1px solid #ff9900; font-size: 0.65rem; padding: 1px 6px; border-radius: 10px; font-weight: 700; }
   @media (max-width: 768px) {
     .signal-grid { grid-template-columns: 1fr; }
     .topbar h1 { font-size: 1rem; }
-    tbody td:nth-child(n+6) { display: none; }
+    tbody td:nth-child(n+7) { display: none; }
   }
-
-  .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; }
-  .tab-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 5px 14px; font-size: 0.82rem; cursor: pointer; }
-  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -130,6 +128,8 @@
   </div>
 </div>
 
+<div id="alert-container" style="max-width:1600px;margin:0 auto;padding:10px 20px 0;display:none"></div>
+
 <div class="main">
 
   <!-- Controls -->
@@ -138,25 +138,20 @@
     <div class="filters">
       <label class="d-flex align-items-center gap-2" style="cursor:pointer">
         <input type="checkbox" id="use-sp500" checked style="accent-color:var(--accent);width:16px;height:16px">
-        <span style="font-size:0.85rem">Include S&amp;P 500 Top</span>
+        <span style="font-size:0.85rem">S&amp;P 500 Top</span>
         <select id="sp500-limit" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:0.82rem">
           <option value="25">25</option>
           <option value="50" selected>50</option>
           <option value="75">75</option>
           <option value="100">100</option>
         </select>
-        <span style="font-size:0.85rem">stocks</span>
       </label>
       <div style="height:24px;width:1px;background:var(--border)"></div>
-      <div style="position:relative">
-        <input type="text" id="custom-tickers" placeholder="Add tickers: AAPL, TSLA, NVDA..." style="width:280px">
-      </div>
+      <input type="text" id="custom-tickers" placeholder="Add tickers: AAPL, TSLA..." style="width:240px">
       <div style="height:24px;width:1px;background:var(--border)"></div>
-      <select id="sector-filter">
-        <option value="All">All Sectors</option>
-      </select>
+      <select id="sector-filter"><option value="All">All Sectors</option></select>
       <select id="rec-filter">
-        <option value="All">All Recommendations</option>
+        <option value="All">All Recs</option>
         <option value="Strong Buy">Strong Buy</option>
         <option value="Buy">Buy</option>
         <option value="Hold">Hold</option>
@@ -173,7 +168,13 @@
     </div>
   </div>
 
-  <!-- Top Picks row -->
+  <!-- Watchlist -->
+  <div class="card" id="watchlist-card" style="display:none">
+    <div class="card-title"><i class="bi bi-star-fill" style="color:#d29922"></i> My Watchlist</div>
+    <div id="watchlist-grid" class="row g-2"></div>
+  </div>
+
+  <!-- Top Picks -->
   <div id="top-picks" style="display:none">
     <div class="row g-3 mb-3">
       <div class="col-md-6">
@@ -184,51 +185,48 @@
       </div>
       <div class="col-md-6">
         <div class="card mb-0">
-          <div class="card-title"><i class="bi bi-arrow-down-circle-fill" style="color:var(--red)"></i> Top Short-Term Sells / Shorts</div>
+          <div class="card-title"><i class="bi bi-arrow-down-circle-fill" style="color:var(--red)"></i> Top Sells / Shorts</div>
           <div id="top-sells-grid" class="row g-2"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Results table -->
+  <!-- Results -->
   <div class="card" id="results-card" style="display:none">
     <div class="section-header">
       <div>
         <div class="card-title mb-1"><i class="bi bi-table"></i> Screening Results</div>
         <div class="results-count" id="results-count"></div>
       </div>
-      <div class="d-flex gap-2">
-        <input type="text" id="search-box" placeholder="Search ticker / name..." oninput="filterTable()"
-          style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;font-size:0.82rem;outline:none">
-      </div>
+      <input type="text" id="search-box" placeholder="Search..." oninput="filterTable()"
+        style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;font-size:0.82rem;outline:none">
     </div>
-
     <div class="tab-bar">
       <button class="tab-btn active" onclick="setView('all',this)">All</button>
       <button class="tab-btn" onclick="setView('buy',this)">Buys</button>
       <button class="tab-btn" onclick="setView('sell',this)">Sells</button>
+      <button class="tab-btn" onclick="setView('watchlist',this)"><i class="bi bi-star-fill" style="color:#d29922"></i> Watchlist</button>
     </div>
-
     <div style="overflow-x:auto">
       <table id="results-table">
         <thead>
           <tr>
+            <th></th>
             <th onclick="sortTable('ticker')">Ticker <span class="sort-icon" id="sort-ticker"></span></th>
             <th onclick="sortTable('price')">Price <span class="sort-icon" id="sort-price"></span></th>
-            <th onclick="sortTable('composite_score')">Overall Score <span class="sort-icon" id="sort-composite_score" class="desc"></span></th>
+            <th onclick="sortTable('composite_score')">Score <span class="sort-icon" id="sort-composite_score"></span></th>
             <th onclick="sortTable('tech_score')">Short-Term <span class="sort-icon" id="sort-tech_score"></span></th>
             <th onclick="sortTable('fund_score')">Long-Term <span class="sort-icon" id="sort-fund_score"></span></th>
-            <th>Overall Rec</th>
-            <th>Short Rec</th>
-            <th>Long Rec</th>
+            <th>Overall</th>
             <th onclick="sortTable('rsi')">RSI <span class="sort-icon" id="sort-rsi"></span></th>
             <th onclick="sortTable('momentum_20d')">20D Mom% <span class="sort-icon" id="sort-momentum_20d"></span></th>
+            <th>BB Signal</th>
             <th>P/E</th>
             <th>Rev Growth</th>
             <th>Analyst</th>
             <th>Upside</th>
-            <th>Market Cap</th>
+            <th>Earnings</th>
             <th>Sector</th>
           </tr>
         </thead>
@@ -237,13 +235,11 @@
     </div>
   </div>
 
-  <!-- Empty state -->
   <div id="empty-state" class="text-center py-5" style="color:var(--text-muted)">
     <i class="bi bi-graph-up" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:12px"></i>
     <div style="font-size:1rem;margin-bottom:6px">Configure your screener and click Run</div>
-    <div style="font-size:0.82rem">Analyzes technical indicators + fundamentals to rank stocks</div>
+    <div style="font-size:0.82rem">Technical + fundamental analysis across S&amp;P 500</div>
   </div>
-
 </div>
 
 <!-- Detail Modal -->
@@ -258,21 +254,74 @@
 let allData = [];
 let currentSort = { key: 'composite_score', dir: 'desc' };
 let currentView = 'all';
+let chartInstance = null;
 
+// ── Watchlist (localStorage) ──────────────────────────────
+function getWatchlist() {
+  try { return JSON.parse(localStorage.getItem('watchlist') || '[]'); } catch { return []; }
+}
+function setWatchlist(list) {
+  localStorage.setItem('watchlist', JSON.stringify(list));
+}
+function toggleWatchlist(ticker) {
+  let wl = getWatchlist();
+  if (wl.includes(ticker)) wl = wl.filter(t => t !== ticker);
+  else wl.push(ticker);
+  setWatchlist(wl);
+  renderTable(allData);
+  renderWatchlistSection();
+}
+function isWatched(ticker) { return getWatchlist().includes(ticker); }
+
+// ── Alerts (localStorage) ─────────────────────────────────
+function getAlerts() {
+  try { return JSON.parse(localStorage.getItem('scoreAlerts') || '{}'); } catch { return {}; }
+}
+function setAlert(ticker, above, below) {
+  const alerts = getAlerts();
+  alerts[ticker] = { above: above ? parseFloat(above) : null, below: below ? parseFloat(below) : null };
+  localStorage.setItem('scoreAlerts', JSON.stringify(alerts));
+}
+function removeAlert(ticker) {
+  const alerts = getAlerts();
+  delete alerts[ticker];
+  localStorage.setItem('scoreAlerts', JSON.stringify(alerts));
+}
+function checkAlerts(results) {
+  const alerts = getAlerts();
+  const triggered = [];
+  results.forEach(r => {
+    const a = alerts[r.ticker];
+    if (!a) return;
+    if (a.above !== null && r.composite_score >= a.above)
+      triggered.push({ ticker: r.ticker, msg: `Score hit ${r.composite_score} (alert: ≥${a.above})`, type: 'buy' });
+    if (a.below !== null && r.composite_score <= a.below)
+      triggered.push({ ticker: r.ticker, msg: `Score dropped to ${r.composite_score} (alert: ≤${a.below})`, type: 'sell' });
+  });
+  const container = document.getElementById('alert-container');
+  if (triggered.length === 0) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = triggered.map(t => `
+    <div class="alert-banner ${t.type === 'sell' ? 'sell' : ''} mb-2">
+      <i class="bi bi-bell-fill" style="color:${t.type === 'sell' ? 'var(--red)' : 'var(--green)'}"></i>
+      <strong>${t.ticker}</strong>: ${t.msg}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer"><i class="bi bi-x"></i></button>
+    </div>`).join('');
+}
+
+// ── Screener ──────────────────────────────────────────────
 async function runScreener() {
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Scanning...';
-
   const progressWrap = document.getElementById('progress-wrap');
   const progressBar = document.getElementById('progress-bar');
   const progressText = document.getElementById('progress-text');
   progressWrap.style.display = 'block';
 
-  // Animated progress (fake, since we can't track backend progress)
   let prog = 0;
   const progInterval = setInterval(() => {
-    prog = Math.min(prog + Math.random() * 4, 90);
+    prog = Math.min(prog + Math.random() * 3, 90);
     progressBar.style.width = prog + '%';
     if (prog < 30) progressText.textContent = 'Connecting to market data...';
     else if (prog < 60) progressText.textContent = 'Downloading stock data...';
@@ -292,29 +341,27 @@ async function runScreener() {
       body: JSON.stringify({ use_sp500: usesp500, custom_tickers: customTickers, limit, sector })
     });
     const data = await resp.json();
-
     clearInterval(progInterval);
     progressBar.style.width = '100%';
     setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 500);
 
     allData = data.results;
+    checkAlerts(allData);
     renderTopPicks(data.top_buys, data.top_sells);
     populateSectors(data.sectors);
     renderTable(allData);
+    renderWatchlistSection();
 
-    document.getElementById('results-count').textContent =
-      `${data.results.length} stocks screened from ${data.screened} tickers`;
-    document.getElementById('last-updated').textContent =
-      'Last updated: ' + new Date().toLocaleTimeString();
+    document.getElementById('results-count').textContent = `${data.results.length} stocks screened`;
+    document.getElementById('last-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
     document.getElementById('empty-state').style.display = 'none';
     document.getElementById('results-card').style.display = 'block';
     document.getElementById('top-picks').style.display = 'block';
   } catch (e) {
     clearInterval(progInterval);
     progressWrap.style.display = 'none';
-    alert('Error fetching data: ' + e.message);
+    alert('Error: ' + e.message);
   }
-
   btn.disabled = false;
   btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
 }
@@ -333,127 +380,110 @@ function populateSectors(sectors) {
 
 function recClass(rec) {
   if (!rec) return 'rec-na';
-  const r = rec.toLowerCase().replace(' ', '-');
-  return 'rec-' + r;
+  return 'rec-' + rec.toLowerCase().replace(/ /g, '-');
 }
-
-function scoreClass(s) {
-  if (s >= 65) return 'score-high';
-  if (s >= 45) return 'score-med';
-  return 'score-low';
-}
-
-function scoreBarColor(s) {
-  if (s >= 65) return '#3fb950';
-  if (s >= 45) return '#d29922';
-  return '#f85149';
-}
+function scoreClass(s) { return s >= 65 ? 'score-high' : s >= 45 ? 'score-med' : 'score-low'; }
+function scoreBarColor(s) { return s >= 65 ? '#3fb950' : s >= 45 ? '#d29922' : '#f85149'; }
 
 function renderTopPicks(buys, sells) {
-  const buyGrid = document.getElementById('top-buys-grid');
-  const sellGrid = document.getElementById('top-sells-grid');
-  buyGrid.innerHTML = '';
-  sellGrid.innerHTML = '';
-
+  ['top-buys-grid', 'top-sells-grid'].forEach(id => document.getElementById(id).innerHTML = '');
   buys.forEach(s => {
-    buyGrid.innerHTML += `
+    document.getElementById('top-buys-grid').innerHTML += `
       <div class="col-6 col-lg-4" onclick="openDetail('${s.ticker}')">
         <div class="top-pick-card">
           <div class="top-pick-score score-high">${s.composite_score}</div>
-          <div>
-            <div class="top-pick-sym">${s.ticker}</div>
-            <div class="top-pick-name">${s.name}</div>
-            <div style="font-size:0.72rem;color:var(--text-muted)">$${s.price}</div>
-          </div>
+          <div><div class="top-pick-sym">${s.ticker}</div><div class="top-pick-name">${s.name}</div><div style="font-size:0.72rem;color:var(--text-muted)">$${s.price}</div></div>
           <div class="ms-auto"><span class="badge-rec ${recClass(s.overall_rec)}">${s.overall_rec}</span></div>
         </div>
       </div>`;
   });
-
   sells.forEach(s => {
-    sellGrid.innerHTML += `
+    document.getElementById('top-sells-grid').innerHTML += `
       <div class="col-6 col-lg-4" onclick="openDetail('${s.ticker}')">
         <div class="top-pick-card">
           <div class="top-pick-score score-low">${s.composite_score}</div>
-          <div>
-            <div class="top-pick-sym">${s.ticker}</div>
-            <div class="top-pick-name">${s.name}</div>
-            <div style="font-size:0.72rem;color:var(--text-muted)">$${s.price}</div>
-          </div>
+          <div><div class="top-pick-sym">${s.ticker}</div><div class="top-pick-name">${s.name}</div><div style="font-size:0.72rem;color:var(--text-muted)">$${s.price}</div></div>
           <div class="ms-auto"><span class="badge-rec ${recClass(s.overall_rec)}">${s.overall_rec}</span></div>
         </div>
       </div>`;
   });
+}
+
+function renderWatchlistSection() {
+  const wl = getWatchlist();
+  const card = document.getElementById('watchlist-card');
+  const grid = document.getElementById('watchlist-grid');
+  const wlData = allData.filter(r => wl.includes(r.ticker));
+  if (wlData.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  grid.innerHTML = wlData.map(r => `
+    <div class="col-6 col-md-4 col-lg-3" onclick="openDetail('${r.ticker}')">
+      <div class="top-pick-card">
+        <div class="top-pick-score ${scoreClass(r.composite_score)}">${r.composite_score}</div>
+        <div><div class="top-pick-sym">${r.ticker}</div><div class="top-pick-name">${r.name}</div><div style="font-size:0.72rem;color:var(--text-muted)">$${r.price}</div></div>
+        <div class="ms-auto"><span class="badge-rec ${recClass(r.overall_rec)}">${r.overall_rec}</span></div>
+      </div>
+    </div>`).join('');
 }
 
 function renderTable(data) {
   const sector = document.getElementById('sector-filter').value;
   const recF = document.getElementById('rec-filter').value;
   const search = (document.getElementById('search-box').value || '').toLowerCase();
+  const wl = getWatchlist();
 
   let filtered = data.filter(r => {
     if (sector !== 'All' && r.sector !== sector) return false;
     if (recF !== 'All' && r.overall_rec !== recF) return false;
     if (currentView === 'buy' && !['Strong Buy','Buy'].includes(r.overall_rec)) return false;
     if (currentView === 'sell' && !['Strong Sell','Sell'].includes(r.overall_rec)) return false;
+    if (currentView === 'watchlist' && !wl.includes(r.ticker)) return false;
     if (search && !r.ticker.toLowerCase().includes(search) && !r.name.toLowerCase().includes(search)) return false;
     return true;
   });
 
-  // Sort
   filtered.sort((a, b) => {
     let av = a[currentSort.key], bv = b[currentSort.key];
-    if (av === 'N/A' || av === null || av === undefined) av = currentSort.dir === 'asc' ? Infinity : -Infinity;
-    if (bv === 'N/A' || bv === null || bv === undefined) bv = currentSort.dir === 'asc' ? Infinity : -Infinity;
+    const def = currentSort.dir === 'asc' ? Infinity : -Infinity;
+    if (av === 'N/A' || av === null || av === undefined) av = def;
+    if (bv === 'N/A' || bv === null || bv === undefined) bv = def;
     if (typeof av === 'string') av = av.replace(/[%$]/g, '');
     if (typeof bv === 'string') bv = bv.replace(/[%$]/g, '');
     av = parseFloat(av); bv = parseFloat(bv);
-    if (isNaN(av)) av = currentSort.dir === 'asc' ? Infinity : -Infinity;
-    if (isNaN(bv)) bv = currentSort.dir === 'asc' ? Infinity : -Infinity;
+    if (isNaN(av)) av = def; if (isNaN(bv)) bv = def;
     return currentSort.dir === 'asc' ? av - bv : bv - av;
   });
 
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = '';
-
   filtered.forEach(r => {
+    const watched = wl.includes(r.ticker);
     const row = document.createElement('tr');
-    row.onclick = () => openDetail(r.ticker);
     row.innerHTML = `
-      <td>
-        <div class="ticker-sym">${r.ticker}</div>
-        <div class="ticker-name">${r.name}</div>
-      </td>
-      <td>$${r.price !== 'N/A' ? r.price : '—'}</td>
-      <td>
+      <td><button class="star-btn ${watched ? 'active' : ''}" onclick="event.stopPropagation();toggleWatchlist('${r.ticker}')" title="${watched ? 'Remove from watchlist' : 'Add to watchlist'}"><i class="bi bi-star${watched ? '-fill' : ''}"></i></button></td>
+      <td onclick="openDetail('${r.ticker}')"><div class="ticker-sym">${r.ticker}${r.earnings_alert ? ' <span class="earnings-badge">EARNINGS</span>' : ''}</div><div class="ticker-name">${r.name}</div></td>
+      <td onclick="openDetail('${r.ticker}')">$${r.price !== 'N/A' ? r.price : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')">
         <div class="d-flex align-items-center gap-2">
           <span class="score-num ${scoreClass(r.composite_score)}">${r.composite_score}</span>
-          <div style="width:60px">
-            <div class="score-bar-wrap">
-              <div class="score-bar" style="width:${r.composite_score}%;background:${scoreBarColor(r.composite_score)}"></div>
-            </div>
-          </div>
+          <div style="width:50px"><div class="score-bar-wrap"><div class="score-bar" style="width:${r.composite_score}%;background:${scoreBarColor(r.composite_score)}"></div></div></div>
         </div>
       </td>
-      <td><span class="score-num ${scoreClass(r.tech_score)}">${r.tech_score}</span></td>
-      <td><span class="score-num ${scoreClass(r.fund_score)}">${r.fund_score}</span></td>
-      <td><span class="badge-rec ${recClass(r.overall_rec)}">${r.overall_rec || '—'}</span></td>
-      <td><span class="badge-rec ${recClass(r.short_rec)}">${r.short_rec || '—'}</span></td>
-      <td><span class="badge-rec ${recClass(r.long_rec)}">${r.long_rec || '—'}</span></td>
-      <td style="color:${r.rsi < 30 ? 'var(--green)' : r.rsi > 70 ? 'var(--red)' : 'inherit'}">${r.rsi !== 'N/A' ? r.rsi : '—'}</td>
-      <td style="color:${r.momentum_20d > 0 ? 'var(--green)' : r.momentum_20d < 0 ? 'var(--red)' : 'inherit'}">${r.momentum_20d !== 'N/A' ? r.momentum_20d + '%' : '—'}</td>
-      <td>${r.pe_ratio !== 'N/A' ? r.pe_ratio : '—'}</td>
-      <td style="color:${r.revenue_growth && r.revenue_growth.startsWith('-') ? 'var(--red)' : 'var(--green)'}">${r.revenue_growth !== 'N/A' ? r.revenue_growth : '—'}</td>
-      <td>${r.analyst_rec !== 'N/A' ? r.analyst_rec : '—'}</td>
-      <td style="color:${r.analyst_upside && !r.analyst_upside.startsWith('-') ? 'var(--green)' : 'var(--red)'}">${r.analyst_upside !== 'N/A' ? r.analyst_upside : '—'}</td>
-      <td>${r.market_cap_fmt || '—'}</td>
-      <td style="color:var(--text-muted);font-size:0.78rem">${r.sector !== 'N/A' ? r.sector : '—'}</td>
-    `;
+      <td onclick="openDetail('${r.ticker}')"><span class="score-num ${scoreClass(r.tech_score)}">${r.tech_score}</span></td>
+      <td onclick="openDetail('${r.ticker}')"><span class="score-num ${scoreClass(r.fund_score)}">${r.fund_score}</span></td>
+      <td onclick="openDetail('${r.ticker}')"><span class="badge-rec ${recClass(r.overall_rec)}">${r.overall_rec || '—'}</span></td>
+      <td onclick="openDetail('${r.ticker}')" style="color:${r.rsi < 30 ? 'var(--green)' : r.rsi > 70 ? 'var(--red)' : 'inherit'}">${r.rsi !== 'N/A' ? r.rsi : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')" style="color:${r.momentum_20d > 0 ? 'var(--green)' : r.momentum_20d < 0 ? 'var(--red)' : 'inherit'}">${r.momentum_20d !== 'N/A' ? r.momentum_20d + '%' : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')" style="font-size:0.78rem;color:${r.bb_signal && r.bb_signal.includes('Bullish') ? 'var(--green)' : r.bb_signal && r.bb_signal.includes('Bearish') ? 'var(--red)' : 'var(--text-muted)'}">${r.bb_signal !== 'N/A' ? r.bb_signal : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')">${r.pe_ratio !== 'N/A' ? r.pe_ratio : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')" style="color:${r.revenue_growth && r.revenue_growth.startsWith('-') ? 'var(--red)' : 'var(--green)'}">${r.revenue_growth !== 'N/A' ? r.revenue_growth : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')">${r.analyst_rec !== 'N/A' ? r.analyst_rec : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')" style="color:${r.analyst_upside && !r.analyst_upside.startsWith('-') ? 'var(--green)' : 'var(--red)'}">${r.analyst_upside !== 'N/A' ? r.analyst_upside : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')" style="font-size:0.78rem;color:${r.earnings_alert ? '#ff9900' : 'var(--text-muted)'}">${r.earnings_date !== 'N/A' ? r.earnings_date : '—'}</td>
+      <td onclick="openDetail('${r.ticker}')" style="color:var(--text-muted);font-size:0.78rem">${r.sector !== 'N/A' ? r.sector : '—'}</td>`;
     tbody.appendChild(row);
   });
-
-  document.getElementById('results-count').textContent =
-    `Showing ${filtered.length} of ${data.length} stocks`;
+  document.getElementById('results-count').textContent = `Showing ${filtered.length} of ${data.length} stocks`;
 }
 
 function filterTable() { renderTable(allData); }
@@ -463,125 +493,302 @@ function setView(v, btn) {
   btn.classList.add('active');
   renderTable(allData);
 }
-
 function sortTable(key) {
-  if (currentSort.key === key) {
-    currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
-  } else {
-    currentSort.key = key;
-    currentSort.dir = 'desc';
-  }
-  // Update indicators
-  document.querySelectorAll('.sort-icon').forEach(el => { el.className = 'sort-icon'; });
+  currentSort.dir = currentSort.key === key ? (currentSort.dir === 'asc' ? 'desc' : 'asc') : 'desc';
+  currentSort.key = key;
+  document.querySelectorAll('.sort-icon').forEach(el => el.className = 'sort-icon');
   const icon = document.getElementById('sort-' + key);
   if (icon) icon.className = 'sort-icon ' + currentSort.dir;
   renderTable(allData);
 }
 
+// ── Detail Modal ──────────────────────────────────────────
 async function openDetail(ticker) {
   const modal = document.getElementById('modal');
   const content = document.getElementById('modal-content');
   modal.classList.add('active');
-  content.innerHTML = '<div class="text-center py-4"><span class="spinner" style="width:32px;height:32px;border-width:3px"></span></div>';
+  content.innerHTML = '<div class="text-center py-5"><span class="spinner" style="width:36px;height:36px;border-width:3px"></span></div>';
 
   try {
     const resp = await fetch('/api/detail/' + ticker);
     const r = await resp.json();
     const ts = r.tech_signals || {};
     const fs = r.fund_signals || {};
+    const watched = isWatched(ticker);
+    const alerts = getAlerts();
+    const alert = alerts[ticker] || {};
 
     content.innerHTML = `
-      <div class="d-flex align-items-start gap-3 mb-4 flex-wrap">
+      <div class="d-flex align-items-start gap-3 mb-3 flex-wrap">
         <div>
-          <h2 style="margin:0;font-size:1.6rem;font-weight:800">${r.ticker}</h2>
+          <div class="d-flex align-items-center gap-2">
+            <h2 style="margin:0;font-size:1.6rem;font-weight:800">${r.ticker}</h2>
+            <button class="star-btn ${watched ? 'active' : ''}" onclick="toggleWatchlist('${r.ticker}');this.classList.toggle('active');this.innerHTML='<i class=\\'bi bi-star'+(isWatched('${r.ticker}')?'-fill':'')+'\\'></i>'" title="Watchlist">
+              <i class="bi bi-star${watched ? '-fill' : ''}"></i>
+            </button>
+          </div>
           <div style="color:var(--text-muted);font-size:0.88rem">${r.name}</div>
           <div style="color:var(--text-muted);font-size:0.78rem">${r.sector} · ${r.market_cap_fmt}</div>
         </div>
         <div class="ms-auto text-end">
           <div style="font-size:2rem;font-weight:800;color:var(--accent)">$${r.price}</div>
           <span class="badge-rec ${recClass(r.overall_rec)}">${r.overall_rec}</span>
+          ${r.earnings_alert ? '<div class="earnings-badge mt-1">⚡ Earnings Soon</div>' : ''}
         </div>
       </div>
 
       <div class="stat-grid mb-4">
-        <div class="stat-box">
-          <div class="stat-label">Overall</div>
-          <div class="stat-val ${scoreClass(r.composite_score)}">${r.composite_score}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Short-Term</div>
-          <div class="stat-val ${scoreClass(r.tech_score)}">${r.tech_score}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Long-Term</div>
-          <div class="stat-val ${scoreClass(r.fund_score)}">${r.fund_score}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Short Rec</div>
-          <div class="mt-1"><span class="badge-rec ${recClass(r.short_rec)}">${r.short_rec}</span></div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Long Rec</div>
-          <div class="mt-1"><span class="badge-rec ${recClass(r.long_rec)}">${r.long_rec}</span></div>
+        <div class="stat-box"><div class="stat-label">Overall</div><div class="stat-val ${scoreClass(r.composite_score)}">${r.composite_score}</div></div>
+        <div class="stat-box"><div class="stat-label">Short-Term</div><div class="stat-val ${scoreClass(r.tech_score)}">${r.tech_score}</div></div>
+        <div class="stat-box"><div class="stat-label">Long-Term</div><div class="stat-val ${scoreClass(r.fund_score)}">${r.fund_score}</div></div>
+        <div class="stat-box"><div class="stat-label">Short Rec</div><div class="mt-1"><span class="badge-rec ${recClass(r.short_rec)}">${r.short_rec}</span></div></div>
+        <div class="stat-box"><div class="stat-label">Long Rec</div><div class="mt-1"><span class="badge-rec ${recClass(r.long_rec)}">${r.long_rec}</span></div></div>
+      </div>
+
+      <div class="modal-tab-bar">
+        <button class="modal-tab active" onclick="switchModalTab('overview',this)"><i class="bi bi-bar-chart-line"></i> Overview</button>
+        <button class="modal-tab" onclick="switchModalTab('chart',this)"><i class="bi bi-graph-up"></i> Chart</button>
+        <button class="modal-tab" onclick="switchModalTab('news',this)"><i class="bi bi-newspaper"></i> News</button>
+        <button class="modal-tab" onclick="switchModalTab('alerts',this)"><i class="bi bi-bell"></i> Alerts</button>
+      </div>
+
+      <!-- Overview -->
+      <div class="modal-panel active" id="panel-overview">
+        <div class="signal-grid">
+          <div class="signal-section">
+            <div class="card-title mb-3"><i class="bi bi-activity"></i> Technical (Short-Term)</div>
+            ${sigRow('RSI (14)', ts.rsi, ts.rsi < 30 ? 'var(--green)' : ts.rsi > 70 ? 'var(--red)' : '')}
+            ${sigRow('RSI Signal', ts.rsi_signal)}
+            ${sigRow('MACD Signal', ts.macd_signal)}
+            ${sigRow('MA Signal', ts.ma_signal)}
+            ${sigRow('Bollinger Bands', ts.bb_signal, ts.bb_signal && ts.bb_signal.includes('Bullish') ? 'var(--green)' : ts.bb_signal && ts.bb_signal.includes('Bearish') ? 'var(--red)' : '')}
+            ${sigRow('BB Upper', ts.bb_upper ? '$'+ts.bb_upper : null)}
+            ${sigRow('BB Lower', ts.bb_lower ? '$'+ts.bb_lower : null)}
+            ${sigRow('Price', ts.price ? '$'+ts.price : null)}
+            ${sigRow('MA 20', ts.ma20 ? '$'+ts.ma20 : null)}
+            ${sigRow('MA 50', ts.ma50 ? '$'+ts.ma50 : null)}
+            ${sigRow('20D Momentum', ts.momentum_20d !== undefined ? ts.momentum_20d+'%' : null, ts.momentum_20d > 0 ? 'var(--green)' : 'var(--red)')}
+            ${sigRow('52W Position', ts.pos_52w !== undefined ? ts.pos_52w+'%' : null)}
+            ${sigRow('52W High', ts.high_52w ? '$'+ts.high_52w : null)}
+            ${sigRow('52W Low', ts.low_52w ? '$'+ts.low_52w : null)}
+            ${sigRow('Volume Signal', ts.volume_signal)}
+          </div>
+          <div class="signal-section">
+            <div class="card-title mb-3"><i class="bi bi-building"></i> Fundamental (Long-Term)</div>
+            ${sigRow('P/E Ratio', fs.pe_ratio)}
+            ${sigRow('P/E Signal', fs.pe_signal)}
+            ${sigRow('Forward P/E', fs.forward_pe)}
+            ${sigRow('Fwd P/E Signal', fs.fwd_pe_signal)}
+            ${sigRow('Revenue Growth', fs.revenue_growth, fs.revenue_growth && !fs.revenue_growth.startsWith('-') ? 'var(--green)' : 'var(--red)')}
+            ${sigRow('EPS Growth', fs.eps_growth, fs.eps_growth && !fs.eps_growth.startsWith('-') ? 'var(--green)' : 'var(--red)')}
+            ${sigRow('Profit Margin', fs.profit_margin)}
+            ${sigRow('Return on Equity', fs.roe)}
+            ${sigRow('Debt / Equity', fs.debt_to_equity)}
+            ${sigRow('Analyst Target', fs.analyst_target ? '$'+fs.analyst_target : null)}
+            ${sigRow('Analyst Upside', fs.analyst_upside, fs.analyst_upside && !fs.analyst_upside.startsWith('-') ? 'var(--green)' : 'var(--red)')}
+            ${sigRow('Analyst Rating', fs.analyst_rec)}
+            ${sigRow('Earnings Date', fs.earnings_date, fs.earnings_alert ? '#ff9900' : '')}
+          </div>
         </div>
       </div>
 
-      <div class="signal-grid">
-        <div class="signal-section">
-          <div class="card-title mb-3"><i class="bi bi-activity"></i> Technical Signals (Short-Term)</div>
-          ${sigRow('RSI (14)', ts.rsi, ts.rsi < 30 ? 'var(--green)' : ts.rsi > 70 ? 'var(--red)' : '')}
-          ${sigRow('RSI Signal', ts.rsi_signal)}
-          ${sigRow('MACD Signal', ts.macd_signal)}
-          ${sigRow('MA Signal', ts.ma_signal)}
-          ${sigRow('Price', '$' + ts.price)}
-          ${sigRow('MA 20', '$' + ts.ma20)}
-          ${sigRow('MA 50', '$' + ts.ma50)}
-          ${sigRow('20D Momentum', ts.momentum_20d + '%', ts.momentum_20d > 0 ? 'var(--green)' : 'var(--red)')}
-          ${sigRow('52W High', '$' + ts.high_52w)}
-          ${sigRow('52W Low', '$' + ts.low_52w)}
-          ${sigRow('52W Position', ts.pos_52w + '%')}
-          ${sigRow('Volume Ratio', ts.volume_ratio + 'x')}
-          ${sigRow('Volume Signal', ts.volume_signal)}
+      <!-- Chart -->
+      <div class="modal-panel" id="panel-chart">
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+          ${['1mo','3mo','6mo','1y','2y'].map(p => `<button class="period-btn ${p==='6mo'?'active':''}" onclick="loadChart('${ticker}','${p}',this)">${p}</button>`).join('')}
         </div>
-        <div class="signal-section">
-          <div class="card-title mb-3"><i class="bi bi-building"></i> Fundamental Signals (Long-Term)</div>
-          ${sigRow('P/E Ratio', fs.pe_ratio)}
-          ${sigRow('P/E Signal', fs.pe_signal)}
-          ${sigRow('Forward P/E', fs.forward_pe)}
-          ${sigRow('Fwd P/E Signal', fs.fwd_pe_signal)}
-          ${sigRow('Revenue Growth', fs.revenue_growth, fs.revenue_growth && !fs.revenue_growth.startsWith('-') ? 'var(--green)' : 'var(--red)')}
-          ${sigRow('EPS Growth', fs.eps_growth, fs.eps_growth && !fs.eps_growth.startsWith('-') ? 'var(--green)' : 'var(--red)')}
-          ${sigRow('Profit Margin', fs.profit_margin)}
-          ${sigRow('Return on Equity', fs.roe)}
-          ${sigRow('Debt / Equity', fs.debt_to_equity)}
-          ${sigRow('Analyst Target', fs.analyst_target ? '$' + fs.analyst_target : null)}
-          ${sigRow('Analyst Upside', fs.analyst_upside, fs.analyst_upside && !fs.analyst_upside.startsWith('-') ? 'var(--green)' : 'var(--red)')}
-          ${sigRow('Analyst Rating', fs.analyst_rec)}
+        <div style="position:relative;height:300px"><canvas id="price-chart"></canvas></div>
+        <div style="position:relative;height:80px;margin-top:8px"><canvas id="volume-chart"></canvas></div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:8px;text-align:center">
+          <span style="color:#58a6ff">─ Price</span> &nbsp;
+          <span style="color:#f0883e">─ MA20</span> &nbsp;
+          <span style="color:#bc8cff">─ MA50</span> &nbsp;
+          <span style="color:rgba(63,185,80,0.3)">▓ Bollinger Bands</span>
         </div>
       </div>
 
-      <div style="margin-top:16px;font-size:0.75rem;color:var(--text-muted);text-align:center">
-        Data from Yahoo Finance via yfinance. Not financial advice. Scores: 40% technical + 60% fundamental.
+      <!-- News -->
+      <div class="modal-panel" id="panel-news">
+        <div id="news-content"><div class="text-center py-4"><span class="spinner"></span></div></div>
       </div>
-    `;
+
+      <!-- Alerts -->
+      <div class="modal-panel" id="panel-alerts">
+        <div style="background:var(--bg3);border-radius:8px;padding:20px">
+          <div class="card-title mb-3"><i class="bi bi-bell"></i> Score Alerts for ${r.ticker}</div>
+          <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px">
+            Get notified next time you run the screener if the score crosses your thresholds.
+          </div>
+          <div class="d-flex gap-3 align-items-center flex-wrap mb-3">
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Alert when score ≥</label>
+              <input class="alert-input" type="number" id="alert-above" min="0" max="100" placeholder="e.g. 75" value="${alert.above || ''}">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Alert when score ≤</label>
+              <input class="alert-input" type="number" id="alert-below" min="0" max="100" placeholder="e.g. 35" value="${alert.below || ''}">
+            </div>
+            <div style="padding-top:18px;display:flex;gap:8px">
+              <button class="btn-sm-accent" onclick="saveAlert('${r.ticker}')">Save Alert</button>
+              <button class="btn-sm-danger" onclick="removeAlert('${r.ticker}');document.getElementById('alert-above').value='';document.getElementById('alert-below').value='';showAlertStatus('Removed.')">Remove</button>
+            </div>
+          </div>
+          <div id="alert-status" style="font-size:0.8rem;color:var(--green)"></div>
+          <div style="margin-top:16px;font-size:0.82rem;color:var(--text-muted)">
+            <i class="bi bi-info-circle"></i> Current score: <strong style="color:var(--text)">${r.composite_score}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;font-size:0.72rem;color:var(--text-muted);text-align:center">
+        Data: Yahoo Finance. Not financial advice. Score = 40% technical + 60% fundamental.
+      </div>`;
+
+    // Auto-load chart and news when their tabs are opened
+    document.querySelector('[onclick*="chart"]').addEventListener('click', () => {
+      if (!chartInstance) loadChart(ticker, '6mo', document.querySelector('.period-btn.active'));
+    }, { once: true });
+    document.querySelector('[onclick*="news"]').addEventListener('click', () => loadNews(ticker), { once: true });
+
   } catch (e) {
-    content.innerHTML = '<div class="text-center py-4" style="color:var(--red)">Failed to load detail.</div>';
+    content.innerHTML = '<div class="text-center py-4" style="color:var(--red)">Failed to load.</div>';
   }
 }
 
-function sigRow(label, val, color) {
-  if (val === null || val === undefined || val === 'undefined' || val === 'N/A' || val === 'undefined%') return '';
-  return `<div class="signal-row">
-    <span class="signal-key">${label}</span>
-    <span class="signal-val" style="${color ? 'color:' + color : ''}">${val}</span>
-  </div>`;
+function switchModalTab(name, btn) {
+  document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.modal-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
 }
 
-function closeModal(e) {
-  if (e.target === document.getElementById('modal')) closeModalBtn();
+async function loadChart(ticker, period, btn) {
+  if (btn) {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const priceCtx = document.getElementById('price-chart');
+  const volCtx = document.getElementById('volume-chart');
+  if (!priceCtx || !volCtx) return;
+
+  try {
+    const resp = await fetch(`/api/history/${ticker}?period=${period}`);
+    const data = await resp.json();
+    if (data.error) return;
+
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    if (window._volChart) { window._volChart.destroy(); window._volChart = null; }
+
+    const gridColor = 'rgba(48,54,61,0.8)';
+    const textColor = '#8b949e';
+
+    chartInstance = new Chart(priceCtx, {
+      type: 'line',
+      data: {
+        labels: data.dates,
+        datasets: [
+          {
+            label: 'BB Upper', data: data.bb_upper,
+            borderColor: 'rgba(63,185,80,0.4)', borderWidth: 1, borderDash: [3,3],
+            pointRadius: 0, fill: false, tension: 0.3
+          },
+          {
+            label: 'BB Lower', data: data.bb_lower,
+            borderColor: 'rgba(63,185,80,0.4)', borderWidth: 1, borderDash: [3,3],
+            pointRadius: 0, fill: '-1',
+            backgroundColor: 'rgba(63,185,80,0.07)', tension: 0.3
+          },
+          {
+            label: 'MA50', data: data.ma50,
+            borderColor: '#bc8cff', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3
+          },
+          {
+            label: 'MA20', data: data.ma20,
+            borderColor: '#f0883e', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3
+          },
+          {
+            label: ticker, data: data.closes,
+            borderColor: '#58a6ff', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3
+          },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#161b22', borderColor: '#30363d', borderWidth: 1,
+            titleColor: '#e6edf3', bodyColor: '#8b949e',
+            callbacks: { label: ctx => ctx.dataset.label + ': $' + (ctx.parsed.y || '').toFixed(2) }
+          }
+        },
+        scales: {
+          x: { ticks: { color: textColor, maxTicksLimit: 8, font: { size: 10 } }, grid: { color: gridColor } },
+          y: { ticks: { color: textColor, font: { size: 10 }, callback: v => '$' + v.toFixed(0) }, grid: { color: gridColor } }
+        }
+      }
+    });
+
+    window._volChart = new Chart(volCtx, {
+      type: 'bar',
+      data: {
+        labels: data.dates,
+        datasets: [{ label: 'Volume', data: data.volumes, backgroundColor: 'rgba(88,166,255,0.3)', borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#161b22', borderColor: '#30363d', borderWidth: 1, titleColor: '#e6edf3', bodyColor: '#8b949e' } },
+        scales: {
+          x: { ticks: { display: false }, grid: { display: false } },
+          y: { ticks: { color: textColor, font: { size: 9 }, maxTicksLimit: 3, callback: v => v >= 1e6 ? (v/1e6).toFixed(0)+'M' : v }, grid: { color: gridColor } }
+        }
+      }
+    });
+  } catch(e) {}
 }
+
+async function loadNews(ticker) {
+  const container = document.getElementById('news-content');
+  if (!container) return;
+  try {
+    const resp = await fetch('/api/news/' + ticker);
+    const data = await resp.json();
+    if (!data.news || data.news.length === 0) {
+      container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px">No recent news found.</div>';
+      return;
+    }
+    container.innerHTML = data.news.map(a => `
+      <div class="news-item">
+        <a class="news-title" href="${a.link}" target="_blank" rel="noopener">${a.title} <i class="bi bi-box-arrow-up-right" style="font-size:0.7rem"></i></a>
+        <div class="news-meta">${a.publisher || ''}${a.time ? ' · ' + a.time : ''}</div>
+      </div>`).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px">Failed to load news.</div>';
+  }
+}
+
+function saveAlert(ticker) {
+  const above = document.getElementById('alert-above').value;
+  const below = document.getElementById('alert-below').value;
+  setAlert(ticker, above, below);
+  showAlertStatus('✓ Alert saved! Will trigger next time you run the screener.');
+}
+function showAlertStatus(msg) {
+  const el = document.getElementById('alert-status');
+  if (el) { el.textContent = msg; setTimeout(() => { if(el) el.textContent = ''; }, 3000); }
+}
+
+function sigRow(label, val, color) {
+  if (val === null || val === undefined || val === 'undefined' || val === 'N/A' || String(val).endsWith('undefined') || String(val) === 'undefined%') return '';
+  return `<div class="signal-row"><span class="signal-key">${label}</span><span class="signal-val" style="${color ? 'color:'+color : ''}">${val}</span></div>`;
+}
+
+function closeModal(e) { if (e.target === document.getElementById('modal')) closeModalBtn(); }
 function closeModalBtn() {
   document.getElementById('modal').classList.remove('active');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  if (window._volChart) { window._volChart.destroy(); window._volChart = null; }
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalBtn(); });
 </script>

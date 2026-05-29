@@ -1,10 +1,9 @@
 from flask import Flask, render_template, request, jsonify
 import os
-from screener import screen_tickers, SP500_TICKERS, format_market_cap
+from screener import screen_tickers, SP500_TICKERS, format_market_cap, get_stock_history, get_stock_news
 
 app = Flask(__name__)
-
-DEFAULT_TICKERS = SP500_TICKERS[:50]  # Start with top 50 for speed
+DEFAULT_TICKERS = SP500_TICKERS[:50]
 
 @app.route("/")
 def index():
@@ -25,19 +24,14 @@ def api_screen():
 
     results = screen_tickers(tickers)
 
-    # Sector filter
     if sector_filter and sector_filter != "All":
         results = [r for r in results if r.get("sector") == sector_filter]
 
-    # Format market cap
     for r in results:
         r["market_cap_fmt"] = format_market_cap(r.get("market_cap"))
 
-    # Top picks
     buys = [r for r in results if r["overall_rec"] in ("Strong Buy", "Buy")][:5]
     sells = [r for r in results if r["overall_rec"] in ("Strong Sell", "Sell")][:5]
-
-    # Sector breakdown
     sectors = sorted(set(r["sector"] for r in results if r["sector"] != "N/A"))
 
     return jsonify({
@@ -57,6 +51,19 @@ def api_detail(ticker):
         r["market_cap_fmt"] = format_market_cap(r.get("market_cap"))
         return jsonify(r)
     return jsonify({"error": "Not found"}), 404
+
+@app.route("/api/history/<ticker>")
+def api_history(ticker):
+    period = request.args.get("period", "6mo")
+    data = get_stock_history(ticker.upper(), period)
+    if data:
+        return jsonify(data)
+    return jsonify({"error": "No data"}), 404
+
+@app.route("/api/news/<ticker>")
+def api_news(ticker):
+    articles = get_stock_news(ticker.upper())
+    return jsonify({"news": articles})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
