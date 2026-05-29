@@ -235,10 +235,91 @@
     </div>
   </div>
 
-  <div id="empty-state" class="text-center py-5" style="color:var(--text-muted)">
-    <i class="bi bi-graph-up" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:12px"></i>
-    <div style="font-size:1rem;margin-bottom:6px">Configure your screener and click Run</div>
-    <div style="font-size:0.82rem">Technical + fundamental analysis across S&amp;P 500</div>
+  <!-- Landing / Empty State -->
+  <div id="empty-state">
+
+    <!-- Hero -->
+    <div style="text-align:center;padding:60px 20px 40px">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);border-radius:20px;padding:5px 14px;font-size:0.78rem;color:var(--accent);margin-bottom:20px">
+        <i class="bi bi-lightning-charge-fill"></i> Live market data · Updated on every scan
+      </div>
+      <h2 style="font-size:2.4rem;font-weight:800;margin:0 0 14px;background:linear-gradient(135deg,#e6edf3,#58a6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+        Find Your Next Trade
+      </h2>
+      <p style="color:var(--text-muted);font-size:1rem;max-width:540px;margin:0 auto 28px;line-height:1.6">
+        Screen the S&amp;P 500 in seconds using technical indicators and fundamental analysis. Get clear buy, hold, and sell signals for every stock.
+      </p>
+      <button class="btn-screen" style="padding:12px 32px;font-size:1rem;border-radius:8px" onclick="runScreener()">
+        <i class="bi bi-play-fill"></i> Run Screener Now
+      </button>
+      <div style="color:var(--text-muted);font-size:0.75rem;margin-top:10px">Free · No login required · Takes ~30 seconds</div>
+    </div>
+
+    <!-- Feature cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:32px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">
+        <div style="font-size:1.5rem;margin-bottom:10px">📊</div>
+        <div style="font-weight:700;margin-bottom:6px">Technical Analysis</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5">RSI, MACD, Bollinger Bands, moving averages, momentum &amp; volume signals scored 0–100.</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">
+        <div style="font-size:1.5rem;margin-bottom:10px">🏢</div>
+        <div style="font-weight:700;margin-bottom:6px">Fundamental Analysis</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5">P/E ratio, revenue growth, EPS, profit margins, ROE, debt/equity &amp; analyst targets.</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">
+        <div style="font-size:1.5rem;margin-bottom:10px">📈</div>
+        <div style="font-weight:700;margin-bottom:6px">Interactive Charts</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5">Price history with MA20, MA50 &amp; Bollinger Bands. Switch between 1M to 2Y views.</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">
+        <div style="font-size:1.5rem;margin-bottom:10px">⭐</div>
+        <div style="font-weight:700;margin-bottom:6px">Watchlist &amp; Alerts</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5">Star your favourite stocks and set score alerts that trigger on your next scan.</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">
+        <div style="font-size:1.5rem;margin-bottom:10px">📰</div>
+        <div style="font-weight:700;margin-bottom:6px">Live News Feed</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5">Latest news headlines for every stock pulled directly from Yahoo Finance.</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">
+        <div style="font-size:1.5rem;margin-bottom:10px">🎯</div>
+        <div style="font-weight:700;margin-bottom:6px">Smart Scoring</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5">Composite score (0–100) blends 40% technical + 60% fundamental into one clear signal.</div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:32px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:16px">How It Works</div>
+      <div style="display:flex;gap:0;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px;text-align:center;padding:12px">
+          <div style="width:36px;height:36px;background:rgba(88,166,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-weight:800;color:var(--accent)">1</div>
+          <div style="font-weight:600;font-size:0.88rem;margin-bottom:4px">Choose Stocks</div>
+          <div style="font-size:0.75rem;color:var(--text-muted)">Pick S&amp;P 500 top stocks or add your own tickers</div>
+        </div>
+        <div style="flex:1;min-width:160px;text-align:center;padding:12px">
+          <div style="width:36px;height:36px;background:rgba(88,166,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-weight:800;color:var(--accent)">2</div>
+          <div style="font-weight:600;font-size:0.88rem;margin-bottom:4px">Run the Scan</div>
+          <div style="font-size:0.75rem;color:var(--text-muted)">Live data pulled from Yahoo Finance &amp; scored instantly</div>
+        </div>
+        <div style="flex:1;min-width:160px;text-align:center;padding:12px">
+          <div style="width:36px;height:36px;background:rgba(88,166,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-weight:800;color:var(--accent)">3</div>
+          <div style="font-weight:600;font-size:0.88rem;margin-bottom:4px">Get Signals</div>
+          <div style="font-size:0.75rem;color:var(--text-muted)">Ranked table of Strong Buy → Strong Sell recommendations</div>
+        </div>
+        <div style="flex:1;min-width:160px;text-align:center;padding:12px">
+          <div style="width:36px;height:36px;background:rgba(88,166,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-weight:800;color:var(--accent)">4</div>
+          <div style="font-weight:600;font-size:0.88rem;margin-bottom:4px">Drill Down</div>
+          <div style="font-size:0.75rem;color:var(--text-muted)">Click any stock for charts, news, signals &amp; alerts</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;color:var(--text-muted);font-size:0.75rem;padding-bottom:32px">
+      Data sourced from Yahoo Finance. Not financial advice. Always do your own research.
+    </div>
+
   </div>
 </div>
 
