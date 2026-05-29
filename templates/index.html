@@ -510,8 +510,13 @@ async function openDetail(ticker) {
   content.innerHTML = '<div class="text-center py-5"><span class="spinner" style="width:36px;height:36px;border-width:3px"></span></div>';
 
   try {
-    const resp = await fetch('/api/detail/' + ticker);
-    const r = await resp.json();
+    // Use cached data if available, otherwise fetch
+    let r = allData.find(d => d.ticker === ticker);
+    if (!r) {
+      const resp = await fetch('/api/detail/' + ticker);
+      r = await resp.json();
+    }
+    if (!r.market_cap_fmt) r.market_cap_fmt = 'N/A';
     const ts = r.tech_signals || {};
     const fs = r.fund_signals || {};
     const watched = isWatched(ticker);
