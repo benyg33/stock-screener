@@ -313,19 +313,50 @@ def screen_tickers(tickers, period="6mo"):
         for ticker in batch:
             try:
                 stock = yf.Ticker(ticker)
+                info = {}
 
+                # fast_info uses chart API (reliable on cloud, not rate-limited)
                 try:
-                    info = stock.info or {}
-                except Exception:
-                    info = {}
+                    fi = stock.fast_info
+                    info["currentPrice"] = getattr(fi, "last_price", None)
+                    info["marketCap"] = getattr(fi, "market_cap", None)
+                    info["trailingPE"] = getattr(fi, "pe_ratio", None)
+                    info["forwardPE"] = getattr(fi, "forward_pe", None)
+                    info["fiftyTwoWeekHigh"] = getattr(fi, "year_high", None) or getattr(fi, "fifty_two_week_high", None)
+                    info["fiftyTwoWeekLow"] = getattr(fi, "year_low", None) or getattr(fi, "fifty_two_week_low", None)
+                except Exception as e:
+                    logger.warning(f"{ticker} fast_info failed: {e}")
 
-                # Supplement missing price data with fast_info
-                if not info.get("currentPrice") and not info.get("regularMarketPrice"):
+                # Try full info — may work sometimes, adds fundamentals
+                try:
+                    full_info = stock.info or {}
+                    if len(full_info) > 10:
+                        # Merge, preferring full_info values
+                        for k, v in full_info.items():
+                            if v is not None:
+                                info[k] = v
+                        logger.info(f"{ticker}: full info loaded ({len(full_info)} keys)")
+                    else:
+                        logger.warning(f"{ticker}: full info sparse ({len(full_info)} keys), using fast_info only")
+                except Exception as e:
+                    logger.warning(f"{ticker}: full info failed: {e}")
+
+                # Try analyst targets separately
+                if not info.get("targetMeanPrice"):
                     try:
-                        fi = stock.fast_info
-                        info["currentPrice"] = fi.last_price
-                        if not info.get("marketCap"):
-                            info["marketCap"] = fi.market_cap
+                        apt = stock.analyst_price_targets
+                        if apt is not None and hasattr(apt, 'get'):
+                            info["targetMeanPrice"] = apt.get("mean")
+                    except Exception:
+                        pass
+
+                # Try recommendations
+                if not info.get("recommendationKey"):
+                    try:
+                        rec = stock.recommendations_summary
+                        if rec is not None and not rec.empty:
+                            latest = rec.iloc[0]
+                            info["recommendationKey"] = str(latest.get("period", "")).lower()
                     except Exception:
                         pass
 
