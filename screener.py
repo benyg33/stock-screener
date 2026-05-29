@@ -21,6 +21,44 @@ SP500_TICKERS = [
     "INTC","TGT","LOW","NKE","SBUX","DIS","PYPL","SQ","SHOP","ABNB","PLTR","COIN"
 ]
 
+SECTOR_MAP = {
+    "AAPL":"Technology","MSFT":"Technology","NVDA":"Technology","AVGO":"Technology",
+    "ORCL":"Technology","CRM":"Technology","AMD":"Technology","ADBE":"Technology",
+    "ACN":"Technology","CSCO":"Technology","TXN":"Technology","QCOM":"Technology",
+    "INTU":"Technology","IBM":"Technology","NOW":"Technology","PANW":"Technology",
+    "KLAC":"Technology","LRCX":"Technology","MRVL":"Technology","SNPS":"Technology",
+    "CDNS":"Technology","FTNT":"Technology","CRWD":"Technology","MU":"Technology",
+    "INTC":"Technology","SHOP":"Technology","PLTR":"Technology","ADP":"Technology",
+    "AMZN":"Consumer Cyclical","TSLA":"Consumer Cyclical","HD":"Consumer Cyclical",
+    "MCD":"Consumer Cyclical","BKNG":"Consumer Cyclical","LOW":"Consumer Cyclical",
+    "NKE":"Consumer Cyclical","SBUX":"Consumer Cyclical","F":"Consumer Cyclical",
+    "GM":"Consumer Cyclical","ABNB":"Consumer Cyclical","TGT":"Consumer Defensive",
+    "COST":"Consumer Defensive","PG":"Consumer Defensive","WMT":"Consumer Defensive",
+    "PEP":"Consumer Defensive","KO":"Consumer Defensive","MO":"Consumer Defensive",
+    "CL":"Consumer Defensive",
+    "GOOGL":"Communication Services","META":"Communication Services",
+    "NFLX":"Communication Services","T":"Communication Services",
+    "DIS":"Communication Services","CMCSA":"Communication Services",
+    "JPM":"Financial Services","BRK-B":"Financial Services","V":"Financial Services",
+    "MA":"Financial Services","BAC":"Financial Services","GS":"Financial Services",
+    "MS":"Financial Services","SPGI":"Financial Services","BLK":"Financial Services",
+    "SCHW":"Financial Services","CB":"Financial Services","CME":"Financial Services",
+    "USB":"Financial Services","PNC":"Financial Services","AON":"Financial Services",
+    "MMC":"Financial Services","PYPL":"Financial Services","SQ":"Financial Services",
+    "COIN":"Financial Services",
+    "LLY":"Healthcare","UNH":"Healthcare","JNJ":"Healthcare","ABBV":"Healthcare",
+    "MRK":"Healthcare","TMO":"Healthcare","ABT":"Healthcare","DHR":"Healthcare",
+    "AMGN":"Healthcare","ISRG":"Healthcare","VRTX":"Healthcare","SYK":"Healthcare",
+    "ELV":"Healthcare","PFE":"Healthcare","MDT":"Healthcare","CI":"Healthcare",
+    "BSX":"Healthcare","ZTS":"Healthcare",
+    "XOM":"Energy","CVX":"Energy","EOG":"Energy","SLB":"Energy",
+    "GE":"Industrials","CAT":"Industrials","HON":"Industrials","RTX":"Industrials",
+    "DE":"Industrials","NOC":"Industrials","ITW":"Industrials","WM":"Industrials",
+    "GD":"Industrials","UBER":"Industrials",
+    "NEE":"Utilities","SO":"Utilities","DUK":"Utilities",
+    "LIN":"Basic Materials","APD":"Basic Materials",
+}
+
 def compute_rsi(prices, period=14):
     delta = prices.diff()
     gain = delta.clip(lower=0)
@@ -389,10 +427,11 @@ def screen_tickers(tickers, period="6mo"):
 
                 current_price = (info.get("currentPrice") or info.get("regularMarketPrice") or tech_signals.get("price"))
 
+                sector = info.get("sector") or SECTOR_MAP.get(ticker, "N/A")
                 results.append({
                     "ticker": ticker,
                     "name": info.get("shortName", ticker),
-                    "sector": info.get("sector", "N/A"),
+                    "sector": sector,
                     "price": round(float(current_price), 2) if current_price else "N/A",
                     "market_cap": info.get("marketCap"),
                     "tech_score": tech_score,
