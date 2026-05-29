@@ -3,19 +3,11 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timezone
 import time
-import requests
+import gc
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Use a browser-like session to avoid Yahoo Finance blocking
-_session = requests.Session()
-_session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-})
 
 SP500_TICKERS = [
     "AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","AVGO","JPM",
@@ -298,102 +290,108 @@ def _fetch_with_retry(fn, retries=3, delay=2):
                 time.sleep(delay)
     return None
 
+BATCH_SIZE = 10  # Small batches to stay under 512MB RAM on Render free tier
+
 def screen_tickers(tickers, period="6mo"):
     results = []
 
-    # Try batch download first
-    raw = None
-    if len(tickers) > 1:
-        try:
-            raw = yf.download(
-                tickers, period=period, progress=False,
-                group_by="ticker", threads=False, auto_adjust=True
-            )
-            if raw is None or raw.empty:
+    for i in range(0, len(tickers), BATCH_SIZE):
+        batch = tickers[i:i + BATCH_SIZE]
+        logger.info(f"Processing batch {i//BATCH_SIZE + 1}: {batch}")
+
+        raw = None
+        if len(batch) > 1:
+            try:
+                raw = yf.download(batch, period=period, progress=False,
+                                  group_by="ticker", threads=False, auto_adjust=True)
+                if raw is None or raw.empty:
+                    raw = None
+            except Exception as e:
+                logger.warning(f"Batch download failed: {e}")
                 raw = None
-                logger.warning("Batch download returned empty data")
-        except Exception as e:
-            logger.warning(f"Batch download failed: {e}")
-            raw = None
 
-    for ticker in tickers:
-        try:
-            stock = yf.Ticker(ticker)
+        for ticker in batch:
+            try:
+                stock = yf.Ticker(ticker)
 
-            # Get info with retry
-            info = _fetch_with_retry(lambda s=stock: s.info) or {}
-            if not info or len(info) < 5:
-                logger.warning(f"{ticker}: info empty, retrying...")
-                time.sleep(1)
-                stock2 = yf.Ticker(ticker)
-                info = stock2.info or {}
-
-            # Get history
-            hist = None
-            if raw is not None and len(tickers) > 1:
                 try:
-                    if ticker in raw.columns.get_level_values(0):
-                        hist = raw[ticker].dropna()
-                        if hist.empty:
-                            hist = None
+                    info = stock.info or {}
                 except Exception:
-                    hist = None
+                    info = {}
 
-            if hist is None or (hasattr(hist, '__len__') and len(hist) < 10):
-                hist = _fetch_with_retry(lambda s=stock: s.history(period=period, auto_adjust=True))
+                hist = None
+                if raw is not None:
+                    try:
+                        if ticker in raw.columns.get_level_values(0):
+                            h = raw[ticker].dropna()
+                            if len(h) >= 10:
+                                hist = h
+                    except Exception:
+                        pass
 
-            logger.info(f"{ticker}: info keys={len(info)}, hist rows={len(hist) if hist is not None else 0}")
+                if hist is None:
+                    try:
+                        hist = stock.history(period=period, auto_adjust=True)
+                    except Exception as e:
+                        logger.warning(f"{ticker}: history failed: {e}")
+                        hist = None
 
-            tech_score, tech_signals = score_technical(hist)
-            fund_score, fund_signals = score_fundamental(info)
-            composite = round(tech_score * 0.40 + fund_score * 0.60, 1)
+                logger.info(f"{ticker}: info={len(info)} keys, hist={len(hist) if hist is not None else 0} rows")
 
-            short_rec, short_color = get_recommendation(tech_score)
-            long_rec, long_color = get_recommendation(fund_score)
-            overall_rec, overall_color = get_recommendation(composite)
+                tech_score, tech_signals = score_technical(hist)
+                fund_score, fund_signals = score_fundamental(info)
+                composite = round(tech_score * 0.40 + fund_score * 0.60, 1)
 
-            current_price = (info.get("currentPrice") or info.get("regularMarketPrice") or tech_signals.get("price"))
+                short_rec, short_color = get_recommendation(tech_score)
+                long_rec, long_color = get_recommendation(fund_score)
+                overall_rec, overall_color = get_recommendation(composite)
 
-            results.append({
-                "ticker": ticker,
-                "name": info.get("shortName", ticker),
-                "sector": info.get("sector", "N/A"),
-                "price": round(float(current_price), 2) if current_price else "N/A",
-                "market_cap": info.get("marketCap"),
-                "tech_score": tech_score,
-                "fund_score": fund_score,
-                "composite_score": composite,
-                "short_rec": short_rec, "short_color": short_color,
-                "long_rec": long_rec, "long_color": long_color,
-                "overall_rec": overall_rec, "overall_color": overall_color,
-                "tech_signals": tech_signals,
-                "fund_signals": fund_signals,
-                "pe_ratio": fund_signals.get("pe_ratio", "N/A"),
-                "revenue_growth": fund_signals.get("revenue_growth", "N/A"),
-                "analyst_rec": fund_signals.get("analyst_rec", "N/A"),
-                "analyst_upside": fund_signals.get("analyst_upside", "N/A"),
-                "rsi": tech_signals.get("rsi", "N/A"),
-                "momentum_20d": tech_signals.get("momentum_20d", "N/A"),
-                "pos_52w": tech_signals.get("pos_52w", "N/A"),
-                "bb_signal": tech_signals.get("bb_signal", "N/A"),
-                "earnings_date": fund_signals.get("earnings_date", "N/A"),
-                "earnings_alert": fund_signals.get("earnings_alert", False),
-            })
-        except Exception as e:
-            results.append({
-                "ticker": ticker, "name": ticker, "sector": "N/A",
-                "price": "N/A", "market_cap": None,
-                "tech_score": 50, "fund_score": 50, "composite_score": 50,
-                "short_rec": "N/A", "short_color": "secondary",
-                "long_rec": "N/A", "long_color": "secondary",
-                "overall_rec": "N/A", "overall_color": "secondary",
-                "tech_signals": {}, "fund_signals": {},
-                "pe_ratio": "N/A", "revenue_growth": "N/A",
-                "analyst_rec": "N/A", "analyst_upside": "N/A",
-                "rsi": "N/A", "momentum_20d": "N/A", "pos_52w": "N/A",
-                "bb_signal": "N/A", "earnings_date": "N/A", "earnings_alert": False,
-                "error": str(e),
-            })
+                current_price = (info.get("currentPrice") or info.get("regularMarketPrice") or tech_signals.get("price"))
+
+                results.append({
+                    "ticker": ticker,
+                    "name": info.get("shortName", ticker),
+                    "sector": info.get("sector", "N/A"),
+                    "price": round(float(current_price), 2) if current_price else "N/A",
+                    "market_cap": info.get("marketCap"),
+                    "tech_score": tech_score,
+                    "fund_score": fund_score,
+                    "composite_score": composite,
+                    "short_rec": short_rec, "short_color": short_color,
+                    "long_rec": long_rec, "long_color": long_color,
+                    "overall_rec": overall_rec, "overall_color": overall_color,
+                    "tech_signals": tech_signals,
+                    "fund_signals": fund_signals,
+                    "pe_ratio": fund_signals.get("pe_ratio", "N/A"),
+                    "revenue_growth": fund_signals.get("revenue_growth", "N/A"),
+                    "analyst_rec": fund_signals.get("analyst_rec", "N/A"),
+                    "analyst_upside": fund_signals.get("analyst_upside", "N/A"),
+                    "rsi": tech_signals.get("rsi", "N/A"),
+                    "momentum_20d": tech_signals.get("momentum_20d", "N/A"),
+                    "pos_52w": tech_signals.get("pos_52w", "N/A"),
+                    "bb_signal": tech_signals.get("bb_signal", "N/A"),
+                    "earnings_date": fund_signals.get("earnings_date", "N/A"),
+                    "earnings_alert": fund_signals.get("earnings_alert", False),
+                })
+            except Exception as e:
+                logger.error(f"{ticker} failed: {e}")
+                results.append({
+                    "ticker": ticker, "name": ticker, "sector": "N/A",
+                    "price": "N/A", "market_cap": None,
+                    "tech_score": 50, "fund_score": 50, "composite_score": 50,
+                    "short_rec": "N/A", "short_color": "secondary",
+                    "long_rec": "N/A", "long_color": "secondary",
+                    "overall_rec": "N/A", "overall_color": "secondary",
+                    "tech_signals": {}, "fund_signals": {},
+                    "pe_ratio": "N/A", "revenue_growth": "N/A",
+                    "analyst_rec": "N/A", "analyst_upside": "N/A",
+                    "rsi": "N/A", "momentum_20d": "N/A", "pos_52w": "N/A",
+                    "bb_signal": "N/A", "earnings_date": "N/A", "earnings_alert": False,
+                    "error": str(e),
+                })
+
+        del raw
+        gc.collect()
 
     return sorted(results, key=lambda x: x["composite_score"], reverse=True)
 
