@@ -3,7 +3,7 @@ import os
 from screener import screen_tickers, SP500_TICKERS, format_market_cap, get_stock_history, get_stock_news
 
 app = Flask(__name__)
-DEFAULT_TICKERS = SP500_TICKERS[:50]
+DEFAULT_TICKERS = SP500_TICKERS[:25]
 
 @app.route("/")
 def index():
