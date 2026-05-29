@@ -312,12 +312,28 @@ def screen_tickers(tickers, period="6mo"):
 
         for ticker in batch:
             try:
+                time.sleep(0.3)  # Avoid Yahoo Finance rate limiting
                 stock = yf.Ticker(ticker)
 
                 try:
                     info = stock.info or {}
+                    # If info came back mostly empty, try once more
+                    if len(info) < 10:
+                        time.sleep(1)
+                        info = stock.info or {}
                 except Exception:
                     info = {}
+
+                # Supplement with fast_info if main info is missing price/market cap
+                if not info.get("currentPrice") and not info.get("regularMarketPrice"):
+                    try:
+                        fi = stock.fast_info
+                        info["currentPrice"] = fi.last_price
+                        info["marketCap"] = fi.market_cap
+                        if not info.get("shortName"):
+                            info["shortName"] = ticker
+                    except Exception:
+                        pass
 
                 hist = None
                 if raw is not None:
