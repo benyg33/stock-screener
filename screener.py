@@ -307,8 +307,7 @@ def screen_tickers(tickers, period="6mo"):
         try:
             raw = yf.download(
                 tickers, period=period, progress=False,
-                group_by="ticker", threads=False, auto_adjust=True,
-                session=_session
+                group_by="ticker", threads=False, auto_adjust=True
             )
             if raw is None or raw.empty:
                 raw = None
@@ -319,7 +318,7 @@ def screen_tickers(tickers, period="6mo"):
 
     for ticker in tickers:
         try:
-            stock = yf.Ticker(ticker, session=_session)
+            stock = yf.Ticker(ticker)
 
             # Get info with retry
             info = _fetch_with_retry(lambda s=stock: s.info) or {}
