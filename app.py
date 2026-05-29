@@ -65,6 +65,24 @@ def api_news(ticker):
     articles = get_stock_news(ticker.upper())
     return jsonify({"news": articles})
 
+@app.route("/api/test")
+def api_test():
+    import traceback
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker("AAPL")
+        info = ticker.info
+        hist = ticker.history(period="5d")
+        return jsonify({
+            "status": "ok",
+            "price": info.get("currentPrice") or info.get("regularMarketPrice"),
+            "name": info.get("shortName"),
+            "hist_rows": len(hist),
+            "info_keys": list(info.keys())[:10]
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e), "trace": traceback.format_exc()})
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
     app.run(host="0.0.0.0", port=port)
