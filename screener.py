@@ -1,6 +1,8 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import requests
+import os
 from datetime import datetime, timezone
 import time
 import gc
@@ -58,6 +60,106 @@ SECTOR_MAP = {
     "NEE":"Utilities","SO":"Utilities","DUK":"Utilities",
     "LIN":"Basic Materials","APD":"Basic Materials",
 }
+
+FMP_API_KEY = os.environ.get("FMP_API_KEY", "")
+FMP_BASE    = "https://financialmodelingprep.com/api/v3"
+_fmp_session = requests.Session()
+
+def fetch_fmp_fundamentals(tickers):
+    """Fetch real fundamental data from Financial Modeling Prep.
+    Returns dict: {ticker: {trailingPE, revenueGrowth, profitMargins, ...}}
+    Uses ~3 API calls per 10 tickers (well within 250/day free limit).
+    """
+    if not FMP_API_KEY:
+        return {}
+
+    data = {t: {} for t in tickers}
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    # ── 1. Batch profile: sector, name, market cap, price ──
+    try:
+        symbols = ",".join(tickers)
+        r = _fmp_session.get(
+            f"{FMP_BASE}/profile/{symbols}?apikey={FMP_API_KEY}",
+            headers=headers, timeout=10
+        )
+        if r.status_code == 200:
+            for item in (r.json() or []):
+                sym = item.get("symbol")
+                if sym and sym in data:
+                    data[sym].update({
+                        "shortName":    item.get("companyName"),
+                        "sector":       item.get("sector"),
+                        "currentPrice": item.get("price"),
+                        "marketCap":    item.get("mktCap"),
+                        "beta":         item.get("beta"),
+                    })
+    except Exception as e:
+        logger.warning(f"FMP profile batch failed: {e}")
+
+    # ── 2. Per-ticker: ratios TTM (PE, ROE, D/E, margins) ──
+    for ticker in tickers:
+        try:
+            r = _fmp_session.get(
+                f"{FMP_BASE}/ratios-ttm/{ticker}?apikey={FMP_API_KEY}",
+                headers=headers, timeout=8
+            )
+            if r.status_code == 200:
+                items = r.json() or []
+                m = items[0] if items else {}
+                pe = m.get("peRatioTTM")
+                if pe and float(pe) > 0:
+                    data[ticker]["trailingPE"] = round(float(pe), 2)
+                roe = m.get("returnOnEquityTTM")
+                if roe is not None:
+                    data[ticker]["returnOnEquity"] = float(roe)
+                de = m.get("debtEquityRatioTTM")
+                if de is not None:
+                    data[ticker]["debtToEquity"] = float(de) * 100  # FMP returns ratio, convert to %
+                margin = m.get("netProfitMarginTTM")
+                if margin is not None:
+                    data[ticker]["profitMargins"] = float(margin)
+        except Exception as e:
+            logger.warning(f"FMP ratios {ticker} failed: {e}")
+
+    # ── 3. Per-ticker: income statement growth (revenue, EPS growth) ──
+    for ticker in tickers:
+        try:
+            r = _fmp_session.get(
+                f"{FMP_BASE}/income-statement-growth/{ticker}?limit=1&apikey={FMP_API_KEY}",
+                headers=headers, timeout=8
+            )
+            if r.status_code == 200:
+                items = r.json() or []
+                m = items[0] if items else {}
+                rev = m.get("growthRevenue")
+                if rev is not None:
+                    data[ticker]["revenueGrowth"] = float(rev)
+                eps = m.get("growthEPS")
+                if eps is not None:
+                    data[ticker]["earningsGrowth"] = float(eps)
+        except Exception as e:
+            logger.warning(f"FMP growth {ticker} failed: {e}")
+
+    # ── 4. Per-ticker: analyst price target ──
+    for ticker in tickers:
+        try:
+            r = _fmp_session.get(
+                f"{FMP_BASE}/price-target-summary/{ticker}?apikey={FMP_API_KEY}",
+                headers=headers, timeout=8
+            )
+            if r.status_code == 200:
+                items = r.json() or []
+                m = items[0] if items else {}
+                target = m.get("targetConsensus") or m.get("targetMean")
+                if target:
+                    data[ticker]["targetMeanPrice"] = float(target)
+        except Exception as e:
+            logger.warning(f"FMP target {ticker} failed: {e}")
+
+    logger.info(f"FMP loaded data for {sum(1 for v in data.values() if v)} / {len(tickers)} tickers")
+    return data
+
 
 def compute_rsi(prices, period=14):
     delta = prices.diff()
@@ -499,12 +601,15 @@ def screen_tickers(tickers, period="6mo"):
                 logger.warning(f"Batch download failed: {e}")
                 raw = None
 
+        # Fetch real fundamentals from FMP for this batch (one set of calls per batch)
+        fmp_data = fetch_fmp_fundamentals(batch)
+
         for ticker in batch:
             try:
                 stock = yf.Ticker(ticker)
                 info = {}
 
-                # ── fast_info only: lightweight chart-API call, never blocked ──
+                # ── fast_info: price / market cap (chart API, never blocked) ──
                 try:
                     fi = stock.fast_info
                     info["currentPrice"]     = getattr(fi, "last_price", None)
@@ -513,6 +618,12 @@ def screen_tickers(tickers, period="6mo"):
                     info["fiftyTwoWeekLow"]  = getattr(fi, "year_low", None)
                 except Exception:
                     pass
+
+                # ── Merge FMP fundamental data (real PE, revenue growth, margins, etc.) ──
+                fmp = fmp_data.get(ticker, {})
+                for k, v in fmp.items():
+                    if v is not None:
+                        info[k] = v
 
                 # ── price history from batch download (already fetched above) ──
                 hist = None
