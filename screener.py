@@ -534,7 +534,16 @@ def screen_tickers(tickers, period="6mo"):
 
                 tech_score, tech_signals = score_technical(hist)
                 fund_score, fund_signals = score_fundamental(info, hist)
-                composite = round(tech_score * 0.40 + fund_score * 0.60, 1)
+                # If fundamental data is real (has PE/revenue/analyst data), weight it 60%.
+                # If it's just the price-history fallback, lean on technicals instead.
+                has_real_fundamentals = any(fund_signals.get(k) for k in (
+                    "pe_ratio", "revenue_growth", "eps_growth", "profit_margin",
+                    "roe", "analyst_target", "analyst_rec"
+                ))
+                if has_real_fundamentals:
+                    composite = round(tech_score * 0.40 + fund_score * 0.60, 1)
+                else:
+                    composite = round(tech_score * 0.65 + fund_score * 0.35, 1)
 
                 short_rec, short_color = get_recommendation(tech_score)
                 long_rec, long_color = get_recommendation(fund_score)
