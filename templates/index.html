@@ -639,6 +639,11 @@ async function openDetail(ticker) {
         </div>
       </div>
 
+      <div style="background:var(--bg3);border-left:3px solid ${r.overall_color === 'success' ? 'var(--green)' : r.overall_color === 'primary' ? 'var(--accent)' : r.overall_color === 'warning' ? 'var(--yellow)' : 'var(--red)'};border-radius:6px;padding:14px 16px;margin-bottom:20px;font-size:0.9rem;line-height:1.6;color:var(--text)">
+        <span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);display:block;margin-bottom:4px"><i class="bi bi-robot"></i> Analysis Summary</span>
+        ${r.reason || 'No summary available.'}
+      </div>
+
       <div class="stat-grid mb-4">
         <div class="stat-box"><div class="stat-label">Overall</div><div class="stat-val ${scoreClass(r.composite_score)}">${r.composite_score}</div></div>
         <div class="stat-box"><div class="stat-label">Short-Term</div><div class="stat-val ${scoreClass(r.tech_score)}">${r.tech_score}</div></div>

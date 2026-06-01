@@ -309,6 +309,119 @@ def score_fundamental(info):
 
     return max(0, min(100, score)), signals
 
+def generate_reason(ticker, overall_rec, tech_score, fund_score, tech_signals, fund_signals):
+    tech_points = []
+    fund_points = []
+
+    # --- Technical ---
+    rsi = tech_signals.get("rsi")
+    if rsi is not None:
+        if rsi < 30:   tech_points.append(f"RSI is oversold at {rsi:.0f}")
+        elif rsi > 70: tech_points.append(f"RSI is overbought at {rsi:.0f}")
+
+    macd = tech_signals.get("macd_signal", "")
+    if "Bullish Crossover" in macd:   tech_points.append("MACD just flashed a bullish crossover")
+    elif "Bearish Crossover" in macd: tech_points.append("MACD just flashed a bearish crossover")
+    elif macd == "Bullish":           tech_points.append("MACD is bullish")
+    elif macd == "Bearish":           tech_points.append("MACD is bearish")
+
+    ma = tech_signals.get("ma_signal", "")
+    if "Strong Uptrend" in ma:    tech_points.append("price is in a strong uptrend above both MA20 and MA50")
+    elif "Strong Downtrend" in ma: tech_points.append("price is in a strong downtrend below both moving averages")
+    elif "Above MA50" in ma:       tech_points.append("price is trading above its 50-day moving average")
+    elif "Below MA50" in ma:       tech_points.append("price is below its 50-day moving average")
+
+    bb = tech_signals.get("bb_signal", "")
+    if "Below Lower" in bb: tech_points.append("price is below the lower Bollinger Band (oversold)")
+    elif "Above Upper" in bb: tech_points.append("price is above the upper Bollinger Band (overbought)")
+
+    mom = tech_signals.get("momentum_20d")
+    if mom is not None:
+        if mom > 10:    tech_points.append(f"strong 20-day momentum of +{mom:.1f}%")
+        elif mom < -10: tech_points.append(f"weak 20-day momentum of {mom:.1f}%")
+
+    # --- Fundamental ---
+    pe = fund_signals.get("pe_ratio")
+    pe_sig = fund_signals.get("pe_signal", "")
+    if pe:
+        if "Undervalued" in pe_sig:      fund_points.append(f"P/E of {pe} looks undervalued")
+        elif "Very Overvalued" in pe_sig: fund_points.append(f"P/E of {pe} looks very overvalued")
+        elif "Overvalued" in pe_sig:      fund_points.append(f"P/E of {pe} is elevated")
+        elif "Fair Value" in pe_sig:      fund_points.append(f"P/E of {pe} is at fair value")
+
+    rev = fund_signals.get("revenue_growth", "")
+    if rev and rev != "N/A":
+        try:
+            v = float(rev.replace("%", ""))
+            if v > 20:   fund_points.append(f"revenue growing strongly at {rev}")
+            elif v > 5:  fund_points.append(f"revenue growing at {rev}")
+            elif v < 0:  fund_points.append(f"revenue declining at {rev}")
+        except Exception:
+            pass
+
+    eps = fund_signals.get("eps_growth", "")
+    if eps and eps != "N/A":
+        try:
+            v = float(eps.replace("%", ""))
+            if v > 20:  fund_points.append(f"earnings growing at {eps}")
+            elif v < 0: fund_points.append(f"earnings declining at {eps}")
+        except Exception:
+            pass
+
+    margin = fund_signals.get("profit_margin", "")
+    if margin and margin != "N/A":
+        try:
+            v = float(margin.replace("%", ""))
+            if v > 20: fund_points.append(f"healthy profit margin of {margin}")
+            elif v < 0: fund_points.append(f"negative profit margin of {margin}")
+        except Exception:
+            pass
+
+    upside = fund_signals.get("analyst_upside", "")
+    target = fund_signals.get("analyst_target")
+    if upside and upside != "N/A" and target:
+        try:
+            v = float(upside.replace("%", ""))
+            if v > 15:    fund_points.append(f"analyst target of ${target} implies {upside} upside")
+            elif v < -10: fund_points.append(f"analyst target of ${target} implies {upside} downside")
+        except Exception:
+            pass
+
+    arec = fund_signals.get("analyst_rec", "N/A")
+    if arec not in ("N/A", "None", "", "Hold"):
+        if any(w in arec.lower() for w in ("buy", "strong buy")):
+            fund_points.append(f"Wall Street rates it a {arec}")
+        elif any(w in arec.lower() for w in ("sell", "strong sell")):
+            fund_points.append(f"Wall Street rates it a {arec}")
+
+    # --- Build sentence ---
+    all_points = tech_points[:2] + fund_points[:3]  # cap at ~5 reasons
+    if not all_points:
+        return f"Not enough data available to generate a detailed explanation for {ticker}."
+
+    rec_phrase = {
+        "Strong Buy":  "is a Strong Buy",
+        "Buy":         "is rated Buy",
+        "Hold":        "is rated Hold — neither a clear buy nor a sell",
+        "Sell":        "is rated Sell",
+        "Strong Sell": "is a Strong Sell",
+    }.get(overall_rec, f"has an {overall_rec} rating")
+
+    if len(all_points) == 1:
+        body = all_points[0]
+    elif len(all_points) == 2:
+        body = f"{all_points[0]} and {all_points[1]}"
+    else:
+        body = ", ".join(all_points[:-1]) + f", and {all_points[-1]}"
+
+    score_note = ""
+    if tech_score != fund_score:
+        better = "technicals" if tech_score > fund_score else "fundamentals"
+        score_note = f" Short-term score: {tech_score}/100, long-term: {fund_score}/100 — {better} are stronger."
+
+    return f"{ticker} {rec_phrase} because {body}.{score_note}"
+
+
 def get_recommendation(score):
     if score >= 75: return "Strong Buy", "success"
     elif score >= 62: return "Buy", "primary"
@@ -428,10 +541,12 @@ def screen_tickers(tickers, period="6mo"):
                 current_price = (info.get("currentPrice") or info.get("regularMarketPrice") or tech_signals.get("price"))
 
                 sector = info.get("sector") or SECTOR_MAP.get(ticker, "N/A")
+                reason = generate_reason(ticker, overall_rec, tech_score, fund_score, tech_signals, fund_signals)
                 results.append({
                     "ticker": ticker,
                     "name": info.get("shortName", ticker),
                     "sector": sector,
+                    "reason": reason,
                     "price": round(float(current_price), 2) if current_price else "N/A",
                     "market_cap": info.get("marketCap"),
                     "tech_score": tech_score,
@@ -457,6 +572,7 @@ def screen_tickers(tickers, period="6mo"):
                 logger.error(f"{ticker} failed: {e}")
                 results.append({
                     "ticker": ticker, "name": ticker, "sector": "N/A",
+                    "reason": f"Data could not be loaded for {ticker}.",
                     "price": "N/A", "market_cap": None,
                     "tech_score": 50, "fund_score": 50, "composite_score": 50,
                     "short_rec": "N/A", "short_color": "secondary",
