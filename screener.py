@@ -1,7 +1,6 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import requests
 from datetime import datetime, timezone
 import time
 import gc
@@ -505,73 +504,17 @@ def screen_tickers(tickers, period="6mo"):
                 stock = yf.Ticker(ticker)
                 info = {}
 
-                # ── 1. fast_info: price / market cap (chart API, always works on cloud) ──
+                # ── fast_info only: lightweight chart-API call, never blocked ──
                 try:
                     fi = stock.fast_info
-                    info["currentPrice"] = getattr(fi, "last_price", None)
-                    info["marketCap"]    = getattr(fi, "market_cap", None)
+                    info["currentPrice"]     = getattr(fi, "last_price", None)
+                    info["marketCap"]        = getattr(fi, "market_cap", None)
                     info["fiftyTwoWeekHigh"] = getattr(fi, "year_high", None)
                     info["fiftyTwoWeekLow"]  = getattr(fi, "year_low", None)
-                except Exception as e:
-                    logger.warning(f"{ticker} fast_info failed: {e}")
-
-                # ── 2. Chart API — gets EPS so we can compute PE/forward PE ──
-                # Same endpoint as yf.download (not blocked on cloud IPs)
-                try:
-                    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d"
-                    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
-                    if r.status_code == 200:
-                        meta = r.json().get("chart", {}).get("result", [{}])[0].get("meta", {})
-                        price = info.get("currentPrice") or meta.get("regularMarketPrice")
-                        if not info.get("currentPrice"):
-                            info["currentPrice"] = meta.get("regularMarketPrice")
-                        if not info.get("marketCap"):
-                            info["marketCap"] = meta.get("marketCap")
-                        if meta.get("shortName"):
-                            info["shortName"] = meta["shortName"]
-                        eps_ttm = meta.get("epsTrailingTwelveMonths")
-                        eps_fwd = meta.get("epsForward")
-                        if price and eps_ttm and float(eps_ttm) > 0:
-                            info["trailingPE"] = round(float(price) / float(eps_ttm), 2)
-                        if price and eps_fwd and float(eps_fwd) > 0:
-                            info["forwardPE"] = round(float(price) / float(eps_fwd), 2)
-                except Exception as e:
-                    logger.warning(f"{ticker} chart meta failed: {e}")
-
-                # ── 3. income_stmt for revenue/margin/EPS growth (different endpoint) ──
-                try:
-                    inc = stock.income_stmt
-                    if inc is not None and not inc.empty and inc.shape[1] >= 2:
-                        def _safe(series, i): return float(series.iloc[i]) if not pd.isna(series.iloc[i]) else None
-                        if "Total Revenue" in inc.index:
-                            rev = inc.loc["Total Revenue"]
-                            r0, r1 = _safe(rev, 0), _safe(rev, 1)
-                            if r0 and r1 and r1 != 0 and "revenueGrowth" not in info:
-                                info["revenueGrowth"] = (r0 - r1) / abs(r1)
-                        eps_key = next((k for k in ["Diluted EPS", "Basic EPS"] if k in inc.index), None)
-                        if eps_key:
-                            eps = inc.loc[eps_key]
-                            e0, e1 = _safe(eps, 0), _safe(eps, 1)
-                            if e0 and e1 and e1 != 0 and "earningsGrowth" not in info:
-                                info["earningsGrowth"] = (e0 - e1) / abs(e1)
-                        if "Net Income" in inc.index and "Total Revenue" in inc.index and "profitMargins" not in info:
-                            ni = _safe(inc.loc["Net Income"], 0)
-                            rv = _safe(inc.loc["Total Revenue"], 0)
-                            if ni and rv and rv > 0:
-                                info["profitMargins"] = ni / rv
                 except Exception:
                     pass
 
-                # ── 4. yfinance stock.info — works locally, may fail on cloud ──
-                try:
-                    full_info = stock.info or {}
-                    if len(full_info) > 10:
-                        for k, v in full_info.items():
-                            if v is not None and k not in info:
-                                info[k] = v
-                except Exception:
-                    pass
-
+                # ── price history from batch download (already fetched above) ──
                 hist = None
                 if raw is not None:
                     try:
@@ -581,15 +524,13 @@ def screen_tickers(tickers, period="6mo"):
                                 hist = h
                     except Exception:
                         pass
-
                 if hist is None:
                     try:
                         hist = stock.history(period=period, auto_adjust=True)
-                    except Exception as e:
-                        logger.warning(f"{ticker}: history failed: {e}")
+                    except Exception:
                         hist = None
 
-                logger.info(f"{ticker}: info={len(info)} keys, hist={len(hist) if hist is not None else 0} rows")
+                logger.info(f"{ticker}: price={info.get('currentPrice')} hist={len(hist) if hist is not None else 0} rows")
 
                 tech_score, tech_signals = score_technical(hist)
                 fund_score, fund_signals = score_fundamental(info, hist)
