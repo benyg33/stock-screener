@@ -201,74 +201,83 @@ def score_technical(hist):
 
     return max(0, min(100, score)), signals
 
-def score_fundamental(info):
-    if not info:
-        return 50, {}
-
+def score_fundamental(info, hist=None):
+    if info is None:
+        info = {}
     score = 50
     signals = {}
+    data_points = 0  # count how many real signals we got
 
     # P/E ratio
     pe = info.get("trailingPE") or info.get("forwardPE")
     if pe and pe > 0:
+        data_points += 1
         signals["pe_ratio"] = round(float(pe), 1)
         if pe < 12:
             score += 15; signals["pe_signal"] = "Undervalued"
         elif pe < 20:
-            score += 8; signals["pe_signal"] = "Fair Value"
+            score += 8;  signals["pe_signal"] = "Fair Value"
         elif pe < 30:
-            score -= 3; signals["pe_signal"] = "Slightly Elevated"
+            score -= 3;  signals["pe_signal"] = "Slightly Elevated"
         elif pe < 50:
             score -= 10; signals["pe_signal"] = "Overvalued"
         else:
             score -= 18; signals["pe_signal"] = "Very Overvalued"
 
-    # Forward P/E vs trailing
+    # Forward P/E vs trailing — if forward < trailing, earnings growing → strong positive
     fwd_pe = info.get("forwardPE")
     trail_pe = info.get("trailingPE")
     if fwd_pe and trail_pe and fwd_pe > 0 and trail_pe > 0:
+        data_points += 1
         signals["forward_pe"] = round(float(fwd_pe), 1)
-        if fwd_pe < trail_pe * 0.9:
-            score += 8; signals["fwd_pe_signal"] = "Earnings Growing"
+        if fwd_pe < trail_pe * 0.85:
+            score += 12; signals["fwd_pe_signal"] = "Earnings Growing Fast"
+        elif fwd_pe < trail_pe * 0.95:
+            score += 8;  signals["fwd_pe_signal"] = "Earnings Growing"
         elif fwd_pe > trail_pe * 1.1:
-            score -= 5; signals["fwd_pe_signal"] = "Earnings Declining"
+            score -= 5;  signals["fwd_pe_signal"] = "Earnings Declining"
 
     # Revenue growth
     rev_growth = info.get("revenueGrowth")
     if rev_growth is not None:
+        data_points += 1
         signals["revenue_growth"] = f"{round(rev_growth * 100, 1)}%"
         if rev_growth > 0.20: score += 12
         elif rev_growth > 0.10: score += 7
         elif rev_growth > 0.05: score += 3
-        elif rev_growth < 0: score -= 10
+        elif rev_growth < 0:    score -= 10
 
     # Earnings growth
     eps_growth = info.get("earningsGrowth")
     if eps_growth is not None:
+        data_points += 1
         signals["eps_growth"] = f"{round(eps_growth * 100, 1)}%"
         if eps_growth > 0.25: score += 12
         elif eps_growth > 0.10: score += 6
-        elif eps_growth < 0: score -= 8
+        elif eps_growth < 0:    score -= 8
 
     # Profit margin
     margin = info.get("profitMargins")
     if margin is not None:
+        data_points += 1
         signals["profit_margin"] = f"{round(margin * 100, 1)}%"
         if margin > 0.20: score += 8
         elif margin > 0.10: score += 4
-        elif margin < 0: score -= 10
+        elif margin < 0:    score -= 10
 
     # Return on equity
     roe = info.get("returnOnEquity")
     if roe is not None:
+        data_points += 1
         signals["roe"] = f"{round(roe * 100, 1)}%"
         if roe > 0.20: score += 8
         elif roe > 0.10: score += 4
-        elif roe < 0: score -= 8
+        elif roe < 0:    score -= 8
 
     # Debt to equity
     de = info.get("debtToEquity")
     if de is not None:
+        data_points += 1
         signals["debt_to_equity"] = round(float(de), 2)
         if de < 30: score += 6
         elif de < 80: score += 2
@@ -278,6 +287,7 @@ def score_fundamental(info):
     target = info.get("targetMeanPrice")
     current = info.get("currentPrice") or info.get("regularMarketPrice")
     if target and current and current > 0:
+        data_points += 1
         upside = ((target - current) / current) * 100
         signals["analyst_target"] = round(float(target), 2)
         signals["analyst_upside"] = f"{round(upside, 1)}%"
@@ -288,8 +298,10 @@ def score_fundamental(info):
     # Analyst recommendation
     rec = info.get("recommendationKey", "").lower()
     signals["analyst_rec"] = rec.replace("_", " ").title() if rec else "N/A"
-    if rec in ["strong_buy", "buy"]: score += 5
-    elif rec in ["sell", "strong_sell"]: score -= 5
+    if rec in ["strong_buy", "buy"]:
+        data_points += 1; score += 5
+    elif rec in ["sell", "strong_sell"]:
+        data_points += 1; score -= 5
 
     # Earnings date
     try:
@@ -307,6 +319,32 @@ def score_fundamental(info):
                 signals["earnings_date"] = f"{abs(days)} days ago"
     except Exception:
         pass
+
+    # ── Price-history fallback when fundamental data is unavailable ──
+    # Uses long-term price performance as a proxy for business health
+    if data_points == 0 and hist is not None and len(hist) >= 20:
+        try:
+            close = hist["Close"].squeeze()
+            # 6-month return
+            lookback = min(len(close) - 1, 125)
+            ret = (float(close.iloc[-1]) - float(close.iloc[-lookback])) / float(close.iloc[-lookback]) * 100
+            signals["price_trend_6m"] = f"{'+' if ret >= 0 else ''}{ret:.1f}%"
+            if ret > 25:   score += 18; signals["trend_signal"] = "Strong 6M Uptrend"
+            elif ret > 10: score += 10; signals["trend_signal"] = "Positive 6M Trend"
+            elif ret > 0:  score += 4;  signals["trend_signal"] = "Slight Uptrend"
+            elif ret > -10: score -= 4; signals["trend_signal"] = "Slight Downtrend"
+            elif ret > -25: score -= 10; signals["trend_signal"] = "Negative 6M Trend"
+            else:           score -= 18; signals["trend_signal"] = "Strong 6M Downtrend"
+            # Volatility — lower is better for long-term
+            daily_returns = close.pct_change().dropna()
+            vol = float(daily_returns.std()) * (252 ** 0.5) * 100  # annualised %
+            signals["volatility"] = f"{vol:.1f}%"
+            if vol < 20:   score += 6
+            elif vol < 35: score += 2
+            elif vol > 60: score -= 6
+            data_points = 1  # mark as having data
+        except Exception:
+            pass
 
     return max(0, min(100, score)), signals
 
@@ -500,7 +538,31 @@ def screen_tickers(tickers, period="6mo"):
                 except Exception as e:
                     logger.warning(f"{ticker} chart meta failed: {e}")
 
-                # ── 3. yfinance stock.info — works locally, may fail on cloud ──
+                # ── 3. income_stmt for revenue/margin/EPS growth (different endpoint) ──
+                try:
+                    inc = stock.income_stmt
+                    if inc is not None and not inc.empty and inc.shape[1] >= 2:
+                        def _safe(series, i): return float(series.iloc[i]) if not pd.isna(series.iloc[i]) else None
+                        if "Total Revenue" in inc.index:
+                            rev = inc.loc["Total Revenue"]
+                            r0, r1 = _safe(rev, 0), _safe(rev, 1)
+                            if r0 and r1 and r1 != 0 and "revenueGrowth" not in info:
+                                info["revenueGrowth"] = (r0 - r1) / abs(r1)
+                        eps_key = next((k for k in ["Diluted EPS", "Basic EPS"] if k in inc.index), None)
+                        if eps_key:
+                            eps = inc.loc[eps_key]
+                            e0, e1 = _safe(eps, 0), _safe(eps, 1)
+                            if e0 and e1 and e1 != 0 and "earningsGrowth" not in info:
+                                info["earningsGrowth"] = (e0 - e1) / abs(e1)
+                        if "Net Income" in inc.index and "Total Revenue" in inc.index and "profitMargins" not in info:
+                            ni = _safe(inc.loc["Net Income"], 0)
+                            rv = _safe(inc.loc["Total Revenue"], 0)
+                            if ni and rv and rv > 0:
+                                info["profitMargins"] = ni / rv
+                except Exception:
+                    pass
+
+                # ── 4. yfinance stock.info — works locally, may fail on cloud ──
                 try:
                     full_info = stock.info or {}
                     if len(full_info) > 10:
@@ -530,7 +592,7 @@ def screen_tickers(tickers, period="6mo"):
                 logger.info(f"{ticker}: info={len(info)} keys, hist={len(hist) if hist is not None else 0} rows")
 
                 tech_score, tech_signals = score_technical(hist)
-                fund_score, fund_signals = score_fundamental(info)
+                fund_score, fund_signals = score_fundamental(info, hist)
                 composite = round(tech_score * 0.40 + fund_score * 0.60, 1)
 
                 short_rec, short_color = get_recommendation(tech_score)
