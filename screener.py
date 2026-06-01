@@ -466,50 +466,95 @@ def screen_tickers(tickers, period="6mo"):
                 stock = yf.Ticker(ticker)
                 info = {}
 
-                # fast_info uses chart API (reliable on cloud, not rate-limited)
+                # ── 1. fast_info: price / market cap (chart API, always works on cloud) ──
                 try:
                     fi = stock.fast_info
                     info["currentPrice"] = getattr(fi, "last_price", None)
-                    info["marketCap"] = getattr(fi, "market_cap", None)
-                    info["trailingPE"] = getattr(fi, "pe_ratio", None)
-                    info["forwardPE"] = getattr(fi, "forward_pe", None)
-                    info["fiftyTwoWeekHigh"] = getattr(fi, "year_high", None) or getattr(fi, "fifty_two_week_high", None)
-                    info["fiftyTwoWeekLow"] = getattr(fi, "year_low", None) or getattr(fi, "fifty_two_week_low", None)
+                    info["marketCap"]    = getattr(fi, "market_cap", None)
+                    info["fiftyTwoWeekHigh"] = getattr(fi, "year_high", None)
+                    info["fiftyTwoWeekLow"]  = getattr(fi, "year_low", None)
                 except Exception as e:
                     logger.warning(f"{ticker} fast_info failed: {e}")
 
-                # Try full info — may work sometimes, adds fundamentals
+                # ── 2. Chart API direct — EPS/PE data (same endpoint as yf.download, not blocked) ──
+                try:
+                    import requests as _req
+                    _headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                    r = _req.get(
+                        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
+                        headers=_headers, timeout=6
+                    )
+                    if r.status_code == 200:
+                        meta = r.json().get("chart", {}).get("result", [{}])[0].get("meta", {})
+                        price = info.get("currentPrice") or meta.get("regularMarketPrice")
+                        if not info.get("currentPrice"):
+                            info["currentPrice"] = meta.get("regularMarketPrice")
+                        if not info.get("marketCap"):
+                            info["marketCap"] = meta.get("marketCap")
+                        info["shortName"] = meta.get("shortName") or ticker
+                        eps_ttm = meta.get("epsTrailingTwelveMonths")
+                        eps_fwd = meta.get("epsForward")
+                        if price and eps_ttm and float(eps_ttm) > 0:
+                            info["trailingPE"] = round(float(price) / float(eps_ttm), 2)
+                        if price and eps_fwd and float(eps_fwd) > 0:
+                            info["forwardPE"] = round(float(price) / float(eps_fwd), 2)
+                        logger.info(f"{ticker}: chart meta PE={info.get('trailingPE')} fwdPE={info.get('forwardPE')}")
+                except Exception as e:
+                    logger.warning(f"{ticker} chart API direct failed: {e}")
+
+                # ── 3. quoteSummary with specific modules (smaller request, more likely to succeed) ──
+                try:
+                    import requests as _req
+                    _headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept": "application/json",
+                    }
+                    for host in ("query1", "query2"):
+                        r = _req.get(
+                            f"https://{host}.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+                            "?modules=financialData,defaultKeyStatistics,summaryProfile",
+                            headers=_headers, timeout=8
+                        )
+                        if r.status_code == 200:
+                            res = (r.json().get("quoteSummary", {}).get("result") or [None])[0]
+                            if res:
+                                def _rv(d, k):
+                                    v = d.get(k)
+                                    return v.get("raw") if isinstance(v, dict) else v
+                                fd = res.get("financialData", {})
+                                ks = res.get("defaultKeyStatistics", {})
+                                sp = res.get("summaryProfile", {})
+                                for dst, src_d, src_k in [
+                                    ("targetMeanPrice",  fd, "targetMeanPrice"),
+                                    ("recommendationKey",fd, "recommendationKey"),
+                                    ("revenueGrowth",    fd, "revenueGrowth"),
+                                    ("earningsGrowth",   fd, "earningsGrowth"),
+                                    ("profitMargins",    fd, "profitMargins"),
+                                    ("returnOnEquity",   fd, "returnOnEquity"),
+                                    ("debtToEquity",     fd, "debtToEquity"),
+                                    ("trailingPE",       ks, "trailingPE"),
+                                    ("forwardPE",        ks, "forwardPE"),
+                                ]:
+                                    v = _rv(src_d, src_k)
+                                    if v is not None and dst not in info:
+                                        info[dst] = v
+                                if sp.get("sector"):
+                                    info["sector"] = sp["sector"]
+                                logger.info(f"{ticker}: quoteSummary loaded from {host}")
+                                break
+                except Exception as e:
+                    logger.warning(f"{ticker} quoteSummary direct failed: {e}")
+
+                # ── 4. yfinance stock.info as last resort ──
                 try:
                     full_info = stock.info or {}
                     if len(full_info) > 10:
-                        # Merge, preferring full_info values
                         for k, v in full_info.items():
-                            if v is not None:
+                            if v is not None and k not in info:
                                 info[k] = v
-                        logger.info(f"{ticker}: full info loaded ({len(full_info)} keys)")
-                    else:
-                        logger.warning(f"{ticker}: full info sparse ({len(full_info)} keys), using fast_info only")
+                        logger.info(f"{ticker}: yf info loaded ({len(full_info)} keys)")
                 except Exception as e:
-                    logger.warning(f"{ticker}: full info failed: {e}")
-
-                # Try analyst targets separately
-                if not info.get("targetMeanPrice"):
-                    try:
-                        apt = stock.analyst_price_targets
-                        if apt is not None and hasattr(apt, 'get'):
-                            info["targetMeanPrice"] = apt.get("mean")
-                    except Exception:
-                        pass
-
-                # Try recommendations
-                if not info.get("recommendationKey"):
-                    try:
-                        rec = stock.recommendations_summary
-                        if rec is not None and not rec.empty:
-                            latest = rec.iloc[0]
-                            info["recommendationKey"] = str(latest.get("period", "")).lower()
-                    except Exception:
-                        pass
+                    logger.warning(f"{ticker}: yf info failed: {e}")
 
                 hist = None
                 if raw is not None:
